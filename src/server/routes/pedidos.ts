@@ -1,0 +1,130 @@
+import { Hono } from "hono";
+import { criarPedidoSchema } from "../../shared/schemas";
+import { criarPedido, cancelarPedido } from "../services/pedido.service";
+import { sha256, derivarTokenRetirada } from "../utils/crypto";
+import { erro } from "../utils/http";
+import type { PedidoPublico, StatusPedido } from "../../shared/types";
+
+export const pedidosRouter = new Hono<{ Bindings: Env }>();
+
+/**
+ * O corpo aceito tem exatamente dois campos por item: id da variação e
+ * quantidade. O schema é .strict(), então qualquer campo extra — um
+ * "valor_centavos" esperançoso, por exemplo — faz a requisição ser
+ * recusada antes de tocar em qualquer lógica.
+ */
+pedidosRouter.post("/", async (c) => {
+  const corpo = criarPedidoSchema.parse(await c.req.json());
+  const { numero, acesso_token } = await criarPedido(c.env.DB, c.env, corpo);
+  return c.json({ numero, acesso_token }, 201);
+});
+
+async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPublico> {
+  const hash = await sha256(token.trim());
+
+  const pedido = await db
+    .prepare(
+      `SELECT p.id, p.numero, p.status, p.valor_total_centavos, p.expires_at, p.created_at,
+              c.nome AS cliente_nome,
+              t.id   AS token_id,
+              r.data_hora AS retirado_em
+         FROM pedidos p
+         JOIN clientes c ON c.id = p.cliente_id
+         LEFT JOIN retirada_tokens t ON t.pedido_id = p.id AND t.revoked_at IS NULL
+         LEFT JOIN retiradas r       ON r.pedido_id = p.id
+        WHERE p.acesso_token_hash = ?1
+        LIMIT 1`,
+    )
+    .bind(hash)
+    .first<{
+      id: string;
+      numero: string;
+      status: StatusPedido;
+      valor_total_centavos: number;
+      expires_at: string | null;
+      created_at: string;
+      cliente_nome: string;
+      token_id: string | null;
+      retirado_em: string | null;
+    }>();
+
+  if (!pedido) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
+
+  const { results: itens } = await db
+    .prepare(
+      `SELECT produto_variacao_id, produto_nome_snapshot, variacao_nome_snapshot,
+              quantidade, valor_unitario_centavos, subtotal_centavos
+         FROM pedido_itens WHERE pedido_id = ?1`,
+    )
+    .bind(pedido.id)
+    .all<PedidoPublico["itens"][number]>();
+
+  return {
+    numero: pedido.numero,
+    status: pedido.status,
+    valor_total_centavos: pedido.valor_total_centavos,
+    expires_at: pedido.expires_at,
+    created_at: pedido.created_at,
+    cliente_nome: pedido.cliente_nome,
+    itens,
+    retirado_em: pedido.retirado_em,
+  };
+}
+
+/**
+ * O acesso ao pedido é pelo token secreto do link, não pelo número.
+ * O número público (PED-000184) é para as pessoas conversarem, e nunca
+ * serve como mecanismo de segurança — por isso não abre nada.
+ */
+pedidosRouter.get("/:token", async (c) => {
+  const pedido = await carregarPorToken(c.env.DB, c.req.param("token"));
+  return c.json({ pedido });
+});
+
+/**
+ * O QR de retirada só é entregue ao dono do link, e só depois de pago.
+ * Antes disso ele nem existe no banco.
+ */
+pedidosRouter.get("/:token/retirada", async (c) => {
+  const hash = await sha256(c.req.param("token").trim());
+
+  const linha = await c.env.DB.prepare(
+    `SELECT p.id, p.status, p.numero, t.nonce
+       FROM pedidos p
+       LEFT JOIN retirada_tokens t ON t.pedido_id = p.id AND t.revoked_at IS NULL
+      WHERE p.acesso_token_hash = ?1
+      LIMIT 1`,
+  )
+    .bind(hash)
+    .first<{ id: string; status: StatusPedido; numero: string; nonce: string | null }>();
+
+  if (!linha) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
+
+  if (linha.status === "AGUARDANDO_PAGAMENTO") {
+    throw erro(409, "NAO_PAGO", "O QR de retirada aparece assim que o pagamento for confirmado.");
+  }
+  if (!linha.nonce) {
+    throw erro(404, "SEM_TOKEN", "Este pedido não tem QR de retirada ativo.");
+  }
+
+  // O token é recalculado a partir da chave do Worker. Só quem tem o link
+  // secreto do pedido chega até aqui, e o banco nunca guardou o segredo.
+  const token = await derivarTokenRetirada(c.env.QR_TOKEN_SECRET, linha.id, linha.nonce);
+
+  return c.json({ numero: linha.numero, status: linha.status, token });
+});
+
+/** Desistir antes de pagar devolve a peça ao estoque na hora. */
+pedidosRouter.post("/:token/cancelar", async (c) => {
+  const hash = await sha256(c.req.param("token").trim());
+  const pedido = await c.env.DB.prepare(`SELECT id FROM pedidos WHERE acesso_token_hash = ?1`)
+    .bind(hash)
+    .first<{ id: string }>();
+
+  if (!pedido) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
+
+  const ok = await cancelarPedido(c.env.DB, pedido.id, "CLIENTE", "Cancelado pelo comprador");
+  if (!ok) throw erro(409, "NAO_CANCELAVEL", "Este pedido não pode mais ser cancelado.");
+
+  return c.json({ ok: true });
+});

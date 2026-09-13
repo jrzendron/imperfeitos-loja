@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "igreja-loja",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-09-12",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Os arquivos estáticos são servidos direto, sem invocar o Worker.
+  // É o que mantém a casca do PWA fora da cota de requisições.
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "igreja-loja",
+      // Substituir pelo ID real que `wrangler d1 create igreja-loja` devolver.
+      // Em desenvolvimento o valor não aponta para nada remoto, MAS precisa
+      // ser um UUID bem formado: o runtime local deriva o caminho do arquivo
+      // a partir dele e falha com SQLITE_CANTOPEN se receber texto solto.
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "igreja-loja-media"
+    }
+  ],
+
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+
+  "vars": {
+    "APP_NAME": "Loja da Igreja",
+    "APP_ENV": "development",
+    "ORDER_PREFIX": "PED",
+    "ORDER_EXPIRATION_MINUTES": "30"
+  }
+}

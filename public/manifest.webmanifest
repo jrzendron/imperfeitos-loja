@@ -1,0 +1,12 @@
+{
+  "name": "Loja da Igreja",
+  "short_name": "Loja",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F7F6",
+  "theme_color": "#0B6E5F",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icons/icone-loja.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

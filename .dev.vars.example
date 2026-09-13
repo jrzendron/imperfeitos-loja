@@ -1,0 +1,9 @@
+# Copie para .dev.vars (que NUNCA vai para o Git).
+#
+# Token do painel administrativo. Vale SÓ para desenvolvimento local:
+# em produção o /admin é protegido pelo Cloudflare Access (Fase 11)
+# e esta variável deixa de existir.
+ADMIN_TOKEN=dev-token-local
+
+# Usado para derivar o hash dos tokens de retirada.
+QR_TOKEN_SECRET=dev-qr-secret-local-nao-usar-em-producao
