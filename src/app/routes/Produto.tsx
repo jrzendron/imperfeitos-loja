@@ -13,6 +13,7 @@ export function Produto() {
   const [produto, setProduto] = useState<ProdutoPublico | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
+  const [fotoAtiva, setFotoAtiva] = useState(0);
 
   useEffect(() => {
     api
@@ -55,29 +56,57 @@ export function Produto() {
 
   return (
     <Pagina>
-      {produto.imagens.length > 0 && (
-        <div className="cartao mb-5 overflow-hidden">
-          <div className="aspect-square max-h-[420px] w-full">
-            <FotoProduto imagens={produto.imagens} nome={produto.nome} />
-          </div>
-          {produto.imagens.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto p-3">
-              {produto.imagens.map((img, n) => (
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-start">
+        <section aria-label="Galeria de fotos" className="lg:sticky lg:top-24">
+          <div className="cartao overflow-hidden bg-white shadow-[0_18px_55px_rgba(8,87,75,0.10)]">
+            <div className="aspect-[4/3] w-full bg-marca-50/50">
+              {produto.imagens[fotoAtiva] ? (
                 <img
-                  key={img.url}
-                  src={img.url}
-                  alt={img.alt ?? `${produto.nome} — foto ${n + 1}`}
-                  loading="lazy"
-                  className="h-16 w-16 flex-none rounded-lg border border-linha object-cover"
+                  src={produto.imagens[fotoAtiva].url}
+                  alt={produto.imagens[fotoAtiva].alt ?? `${produto.nome} — foto ${fotoAtiva + 1}`}
+                  className="h-full w-full object-contain"
                 />
+              ) : (
+                <FotoProduto imagens={[]} nome={produto.nome} />
+              )}
+            </div>
+          </div>
+
+          {produto.imagens.length > 0 && (
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2" aria-label="Escolha uma foto">
+              {produto.imagens.map((img, n) => (
+                <button
+                  key={img.url}
+                  type="button"
+                  onClick={() => setFotoAtiva(n)}
+                  aria-label={`Ver foto ${n + 1} de ${produto.imagens.length}`}
+                  aria-pressed={fotoAtiva === n}
+                  className={`h-20 w-20 flex-none overflow-hidden rounded-xl border-2 bg-white p-1 transition ${
+                    fotoAtiva === n ? "border-marca-600 shadow-md" : "border-linha hover:border-marca-200"
+                  }`}
+                >
+                  <img
+                    src={img.url}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full rounded-lg object-cover"
+                  />
+                </button>
               ))}
             </div>
           )}
-        </div>
-      )}
 
-      <h1 className="text-2xl font-bold">{produto.nome}</h1>
-      {produto.descricao && <p className="mt-2 whitespace-pre-line text-suave">{produto.descricao}</p>}
+          <p className="mt-1 text-center text-xs text-suave">
+            {produto.imagens.length > 1
+              ? `Foto ${fotoAtiva + 1} de ${produto.imagens.length} · toque nas miniaturas para navegar`
+              : "Foto do produto"}
+          </p>
+        </section>
+
+        <section>
+          <p className="text-xs font-bold uppercase tracking-[0.17em] text-marca-600">Coleção especial</p>
+          <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight">{produto.nome}</h1>
+          {produto.descricao && <p className="mt-3 whitespace-pre-line text-suave">{produto.descricao}</p>}
 
       <div className="mt-7 flex flex-wrap items-end justify-between gap-2">
         <div>
@@ -147,6 +176,8 @@ export function Produto() {
         <button className="btn-primario" disabled={totalPecas === 0} onClick={adicionar}>
           Adicionar {totalPecas > 0 ? `${totalPecas} ${totalPecas === 1 ? "peça" : "peças"}` : "ao carrinho"}
         </button>
+      </div>
+        </section>
       </div>
     </Pagina>
   );

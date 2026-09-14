@@ -11,10 +11,13 @@ export function Cabecalho({ admin = false }: { admin?: boolean }) {
     <header className="sticky top-0 z-40 border-b border-white/60 bg-white/90 shadow-[0_1px_20px_rgba(8,87,75,0.06)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
         <Link to="/" className="group flex items-center gap-3 text-tinta">
-          <img src="/icons/icone-loja.svg" alt="" className="h-10 w-10 transition group-hover:scale-105" />
-          <span className="leading-tight">
-            <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-marca-600">Catálogo</span>
-            <span className="block text-[15px] font-bold">Loja da Igreja</span>
+          <img
+            src="/assets/logo-ipda-oficial.webp"
+            alt="Igreja Pentecostal Deus é Amor"
+            className="h-10 w-auto max-w-[190px] object-contain transition group-hover:scale-[1.02] sm:h-12 sm:max-w-[250px]"
+          />
+          <span className="hidden border-l border-linha pl-3 text-xs font-bold uppercase tracking-[0.16em] text-marca-700 sm:block">
+            Loja
           </span>
         </Link>
 

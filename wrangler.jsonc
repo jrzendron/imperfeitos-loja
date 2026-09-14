@@ -36,7 +36,7 @@
   },
 
   "vars": {
-    "APP_NAME": "Loja da Igreja",
+    "APP_NAME": "Loja IPDA",
     "APP_ENV": "production",
     "ORDER_PREFIX": "PED",
     "ORDER_EXPIRATION_MINUTES": "30"
