@@ -14,6 +14,8 @@ export function Produto() {
   const [erro, setErro] = useState<string | null>(null);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [fotoAtiva, setFotoAtiva] = useState(0);
+  const [zoomAberto, setZoomAberto] = useState(false);
+  const [nivelZoom, setNivelZoom] = useState(1);
 
   useEffect(() => {
     api
@@ -21,6 +23,22 @@ export function Produto() {
       .then((r) => setProduto(r.produto))
       .catch((e) => setErro(e.message));
   }, [slug]);
+
+  useEffect(() => {
+    if (!zoomAberto) return;
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const fecharComEsc = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setZoomAberto(false);
+    };
+    window.addEventListener("keydown", fecharComEsc);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener("keydown", fecharComEsc);
+    };
+  }, [zoomAberto]);
 
   if (erro) return <Pagina><Aviso tipo="erro">{erro}</Aviso></Pagina>;
   if (!produto) return <Pagina><Carregando /></Pagina>;
@@ -61,11 +79,25 @@ export function Produto() {
           <div className="cartao overflow-hidden bg-white shadow-[0_18px_55px_rgba(8,87,75,0.10)]">
             <div className="aspect-[4/3] w-full bg-marca-50/50">
               {produto.imagens[fotoAtiva] ? (
-                <img
-                  src={produto.imagens[fotoAtiva].url}
-                  alt={produto.imagens[fotoAtiva].alt ?? `${produto.nome} — foto ${fotoAtiva + 1}`}
-                  className="h-full w-full object-contain"
-                />
+                <button
+                  type="button"
+                  className="group relative h-full w-full cursor-zoom-in"
+                  onClick={() => {
+                    setNivelZoom(1);
+                    setZoomAberto(true);
+                  }}
+                  aria-label={`Ampliar foto ${fotoAtiva + 1} de ${produto.imagens.length}`}
+                >
+                  <img
+                    src={produto.imagens[fotoAtiva].url}
+                    alt={produto.imagens[fotoAtiva].alt ?? `${produto.nome} — foto ${fotoAtiva + 1}`}
+                    className="h-full w-full object-contain"
+                  />
+                  <span className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-tinta/80 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur transition group-hover:bg-marca-700">
+                    <span aria-hidden="true" className="text-base leading-none">⌕</span>
+                    Ampliar
+                  </span>
+                </button>
               ) : (
                 <FotoProduto imagens={[]} nome={produto.nome} />
               )}
@@ -78,7 +110,10 @@ export function Produto() {
                 <button
                   key={img.url}
                   type="button"
-                  onClick={() => setFotoAtiva(n)}
+                  onClick={() => {
+                    setFotoAtiva(n);
+                    setNivelZoom(1);
+                  }}
                   aria-label={`Ver foto ${n + 1} de ${produto.imagens.length}`}
                   aria-pressed={fotoAtiva === n}
                   className={`h-20 w-20 flex-none overflow-hidden rounded-xl border-2 bg-white p-1 transition ${
@@ -179,6 +214,81 @@ export function Produto() {
       </div>
         </section>
       </div>
+
+      {zoomAberto && produto.imagens[fotoAtiva] && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col bg-tinta/95 p-3 backdrop-blur-sm sm:p-6"
+          onClick={() => setZoomAberto(false)}
+          role="presentation"
+        >
+          <div
+            className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Foto ampliada de ${produto.nome}`}
+            onClick={(evento) => evento.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3 text-white">
+              <p className="min-w-0 truncate text-sm font-semibold">
+                Foto {fotoAtiva + 1} de {produto.imagens.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-2xl font-bold transition hover:bg-white/25 disabled:opacity-40"
+                  onClick={() => setNivelZoom((atual) => Math.max(1, atual - 0.5))}
+                  disabled={nivelZoom <= 1}
+                  aria-label="Diminuir zoom"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  className="h-11 min-w-16 rounded-full bg-white/15 px-3 text-sm font-bold transition hover:bg-white/25"
+                  onClick={() => setNivelZoom(1)}
+                  aria-label="Restaurar zoom"
+                >
+                  {Math.round(nivelZoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-2xl font-bold transition hover:bg-white/25 disabled:opacity-40"
+                  onClick={() => setNivelZoom((atual) => Math.min(3, atual + 0.5))}
+                  disabled={nivelZoom >= 3}
+                  aria-label="Aumentar zoom"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  className="ml-1 grid h-11 w-11 place-items-center rounded-full bg-white text-xl font-bold text-tinta transition hover:bg-marca-50"
+                  onClick={() => setZoomAberto(false)}
+                  aria-label="Fechar foto ampliada"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto rounded-2xl bg-white/5">
+              <div
+                className="flex min-h-full min-w-full items-center justify-center p-3 transition-[width,height] duration-200 sm:p-6"
+                style={{ width: `${nivelZoom * 100}%`, height: `${nivelZoom * 100}%` }}
+              >
+                <img
+                  src={produto.imagens[fotoAtiva].url}
+                  alt={produto.imagens[fotoAtiva].alt ?? `${produto.nome} — foto ${fotoAtiva + 1}`}
+                  className="max-h-full max-w-full select-none object-contain"
+                  draggable={false}
+                />
+              </div>
+            </div>
+            <p className="mt-3 text-center text-xs text-white/70">
+              Use os controles para ampliar até 300%. Pressione Esc para fechar.
+            </p>
+          </div>
+        </div>
+      )}
     </Pagina>
   );
 }
