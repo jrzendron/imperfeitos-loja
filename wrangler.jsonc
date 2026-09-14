@@ -18,11 +18,9 @@
     {
       "binding": "DB",
       "database_name": "igreja-loja",
-      // Substituir pelo ID real que `wrangler d1 create igreja-loja` devolver.
-      // Em desenvolvimento o valor não aponta para nada remoto, MAS precisa
-      // ser um UUID bem formado: o runtime local deriva o caminho do arquivo
-      // a partir dele e falha com SQLITE_CANTOPEN se receber texto solto.
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      // Banco de produção. No desenvolvimento local, o Wrangler mantém uma
+      // cópia isolada em .wrangler e não acessa este banco remoto.
+      "database_id": "d8cfa277-4cdb-4419-a66f-00f9b4b9a1d2"
     }
   ],
 
