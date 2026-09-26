@@ -5,6 +5,7 @@ import { adminRouter } from "./routes/admin";
 import { midiaRouter } from "./routes/midia";
 import { tratarErro } from "./utils/http";
 import { expirarPedidosVencidos } from "./services/pedido.service";
+import { webhookMercadoPago } from "./routes/webhook";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -33,6 +34,7 @@ app.route("/api/produtos", produtosRouter);
 app.route("/api/pedidos", pedidosRouter);
 app.route("/api/midia", midiaRouter);
 app.route("/api/admin", adminRouter);
+app.route("/api/webhooks", webhookMercadoPago);
 
 app.onError(tratarErro);
 

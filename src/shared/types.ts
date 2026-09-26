@@ -64,6 +64,12 @@ export interface PedidoPublico {
   itens: ItemPedido[];
   retirada_token?: string | null;
   retirado_em?: string | null;
+  pagamento?: {
+    provider: "MANUAL" | "MERCADO_PAGO";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "REFUNDED";
+    pix_copia_cola: string | null;
+    expires_at: string | null;
+  } | null;
 }
 
 export interface ApiErro {

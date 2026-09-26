@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { api, ErroApi } from "../lib/api";
 import { formatarBRL, formatarDataHora } from "../../shared/format";
@@ -11,6 +11,9 @@ export function Pedido() {
   const [pedido, setPedido] = useState<PedidoPublico | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPix, setErroPix] = useState<string | null>(null);
+  const [criandoPix, setCriandoPix] = useState(false);
+  const tentouCriarPix = useRef(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -32,6 +35,30 @@ export function Pedido() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  const gerarPix = useCallback(async () => {
+    setCriandoPix(true);
+    setErroPix(null);
+    try {
+      const { pagamento } = await api.criarPix(token);
+      setPedido((atual) => (atual ? { ...atual, pagamento } : atual));
+    } catch (e) {
+      setErroPix(e instanceof ErroApi ? e.message : "Não foi possível gerar o Pix.");
+    } finally {
+      setCriandoPix(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (
+      pedido?.status === "AGUARDANDO_PAGAMENTO" &&
+      !pedido.pagamento?.pix_copia_cola &&
+      !tentouCriarPix.current
+    ) {
+      tentouCriarPix.current = true;
+      void gerarPix();
+    }
+  }, [pedido, gerarPix]);
 
   /**
    * Enquanto o pedido aguarda pagamento, a tela reconsulta com intervalo
@@ -76,14 +103,54 @@ export function Pedido() {
 
       {aguardando && (
         <div className="mt-5">
-          <Aviso tipo="alerta" titulo="Aguardando pagamento">
-            O pagamento por Pix ainda não foi ligado a esta loja. Por enquanto,
-            procure a equipe para confirmar o pedido — assim que ele for
-            confirmado, o QR de retirada aparece aqui sozinho.
+          <Aviso tipo="alerta" titulo="Aguardando pagamento Pix">
+            Pague até o horário indicado. A confirmação ocorre automaticamente e,
+            em seguida, o QR de retirada aparece nesta página.
             {pedido.expires_at && (
               <> As peças ficam reservadas até <strong>{formatarDataHora(pedido.expires_at)}</strong>.</>
             )}
           </Aviso>
+        </div>
+      )}
+
+      {aguardando && pedido.pagamento?.pix_copia_cola && (
+        <section className="cartao mt-5 p-5 text-center">
+          <h2 className="font-bold">Pague com Pix</h2>
+          <p className="mt-1 text-sm text-suave">
+            Escaneie o QR Code no aplicativo do seu banco ou copie o código abaixo.
+          </p>
+          <div className="mt-4 flex justify-center">
+            <QrCode
+              valor={pedido.pagamento.pix_copia_cola}
+              rotulo="QR Code para pagamento Pix"
+            />
+          </div>
+          <textarea
+            className="campo mt-4 min-h-24 resize-none text-xs"
+            readOnly
+            aria-label="Código Pix Copia e Cola"
+            value={pedido.pagamento.pix_copia_cola}
+          />
+          <button
+            type="button"
+            className="btn-primario mt-3 w-full"
+            onClick={() => void navigator.clipboard.writeText(pedido.pagamento!.pix_copia_cola!)}
+          >
+            Copiar código Pix
+          </button>
+        </section>
+      )}
+
+      {aguardando && criandoPix && (
+        <div className="mt-5"><Carregando /></div>
+      )}
+
+      {aguardando && erroPix && (
+        <div className="mt-5">
+          <Aviso tipo="erro" titulo="Não foi possível gerar o Pix">{erroPix}</Aviso>
+          <button type="button" className="btn-secundario mt-3" onClick={() => void gerarPix()}>
+            Tentar novamente
+          </button>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { criarPedidoSchema } from "../../shared/schemas";
 import { criarPedido, cancelarPedido } from "../services/pedido.service";
+import { criarPix } from "../services/mercado-pago.service";
 import { sha256, derivarTokenRetirada } from "../utils/crypto";
 import { erro } from "../utils/http";
 import type { PedidoPublico, StatusPedido } from "../../shared/types";
@@ -59,6 +60,14 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
     .bind(pedido.id)
     .all<PedidoPublico["itens"][number]>();
 
+  const pagamento = await db
+    .prepare(
+      `SELECT provider, status, pix_copia_cola, expires_at
+         FROM pagamentos WHERE pedido_id = ?1 LIMIT 1`,
+    )
+    .bind(pedido.id)
+    .first<NonNullable<PedidoPublico["pagamento"]>>();
+
   return {
     numero: pedido.numero,
     status: pedido.status,
@@ -68,6 +77,7 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
     cliente_nome: pedido.cliente_nome,
     itens,
     retirado_em: pedido.retirado_em,
+    pagamento: pagamento ?? null,
   };
 }
 
@@ -79,6 +89,12 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
 pedidosRouter.get("/:token", async (c) => {
   const pedido = await carregarPorToken(c.env.DB, c.req.param("token"));
   return c.json({ pedido });
+});
+
+/** Cria (ou recupera de forma idempotente) o Pix deste pedido. */
+pedidosRouter.post("/:token/pix", async (c) => {
+  const pagamento = await criarPix(c.env.DB, c.env, c.req.param("token"));
+  return c.json({ pagamento });
 });
 
 /**

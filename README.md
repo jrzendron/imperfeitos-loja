@@ -8,11 +8,10 @@ pedido com reserva atômica → confirmação de pagamento → QR de retirada �
 scanner → entrega, com bloqueio de retirada dupla. E o cadastro de produtos
 pelo painel: criar, editar, tamanhos com preço, estoque inicial e fotos.
 
-**O que ainda não existe:** a integração com o Mercado Pago. No lugar dela,
-o admin tem um botão "Confirmar pagamento". Ele chama exatamente a mesma
-função do servidor que o webhook vai chamar, inclusive a proteção contra
-pagamento duplicado — então ligar o Pix depois é acrescentar quem aperta o
-botão, não reescrever o fluxo.
+**Pagamento:** a integração usa o Checkout Transparente do Mercado Pago pela
+API de Orders. O Worker cria um Pix idempotente, exibe QR Code e Copia e Cola e
+confirma o pedido pelo webhook assinado. A confirmação manual continua no
+admin apenas para contingência e testes operacionais.
 
 ---
 

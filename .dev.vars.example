@@ -7,3 +7,7 @@ ADMIN_TOKEN=dev-token-local
 
 # Usado para derivar o hash dos tokens de retirada.
 QR_TOKEN_SECRET=dev-qr-secret-local-nao-usar-em-producao
+
+# Credenciais privadas da aplicação criada em Mercado Pago Developers.
+MERCADO_PAGO_ACCESS_TOKEN=APP_USR-token-de-teste
+MERCADO_PAGO_WEBHOOK_SECRET=assinatura-secreta-do-webhook

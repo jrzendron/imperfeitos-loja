@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 
 export class ErroDeNegocio extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409 | 410 | 422,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 410 | 422 | 502 | 503,
     readonly codigo: string,
     mensagem: string,
     readonly detalhes?: unknown,
@@ -13,7 +13,7 @@ export class ErroDeNegocio extends Error {
 }
 
 export const erro = (
-  status: 400 | 401 | 403 | 404 | 409 | 410 | 422,
+  status: 400 | 401 | 403 | 404 | 409 | 410 | 422 | 502 | 503,
   codigo: string,
   mensagem: string,
   detalhes?: unknown,

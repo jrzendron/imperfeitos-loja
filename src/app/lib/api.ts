@@ -79,6 +79,10 @@ export const api = {
     }),
 
   pedido: (token: string) => pedir<{ pedido: PedidoPublico }>(`/pedidos/${token}`),
+  criarPix: (token: string) =>
+    pedir<{ pagamento: NonNullable<PedidoPublico["pagamento"]> }>(`/pedidos/${token}/pix`, {
+      method: "POST",
+    }),
   qrRetirada: (token: string) =>
     pedir<{ numero: string; status: string; token: string }>(`/pedidos/${token}/retirada`),
   cancelarPedido: (token: string) => pedir<{ ok: true }>(`/pedidos/${token}/cancelar`, { method: "POST" }),

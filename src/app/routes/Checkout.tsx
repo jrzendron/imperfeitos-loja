@@ -16,6 +16,7 @@ export function Checkout() {
   const navegar = useNavigate();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
@@ -54,7 +55,7 @@ export function Checkout() {
     try {
       // Só vão o id da variação e a quantidade. Preço, nunca.
       const { acesso_token } = await api.criarPedido({
-        cliente: { nome: nome.trim(), telefone },
+        cliente: { nome: nome.trim(), telefone, email: email.trim() },
         itens: itens.map((i) => ({
           produto_variacao_id: i.produto_variacao_id,
           quantidade: i.quantidade,
@@ -118,6 +119,23 @@ export function Checkout() {
           />
           <p className="mt-1.5 text-xs text-suave">
             Usamos só para avisar sobre o seu pedido. Não pedimos CPF.
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <label className="rotulo" htmlFor="email">E-mail</label>
+          <input
+            id="email"
+            className="campo"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            type="email"
+            autoComplete="email"
+            placeholder="voce@exemplo.com"
+          />
+          <p className="mt-1.5 text-xs text-suave">
+            Necessário para gerar o pagamento Pix.
           </p>
         </div>
 

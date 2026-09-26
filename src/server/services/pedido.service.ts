@@ -325,6 +325,23 @@ export async function registrarPagamento(
 
   if (!pedido) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
 
+  if (["PAGO", "PRONTO_PARA_RETIRADA", "RETIRADO"].includes(pedido.status)) {
+    const existente = await db
+      .prepare(
+        `SELECT t.nonce
+           FROM pagamentos pg
+           JOIN retirada_tokens t ON t.pedido_id = pg.pedido_id AND t.revoked_at IS NULL
+          WHERE pg.pedido_id = ?1 AND pg.status = 'APPROVED' LIMIT 1`,
+      )
+      .bind(pedidoId)
+      .first<{ nonce: string }>();
+    if (existente) {
+      return {
+        retirada_token: await derivarTokenRetirada(env.QR_TOKEN_SECRET, pedidoId, existente.nonce),
+      };
+    }
+  }
+
   if (pedido.status === "EXPIRADO" || pedido.status === "CANCELADO") {
     // O caso do ARQUITETURA §1.11: o dinheiro entrou depois de o estoque
     // ter sido liberado. Ninguém decide isso automaticamente.
@@ -366,22 +383,35 @@ export async function registrarPagamento(
   // O UNIQUE em pedido_id faz a segunda tentativa levantar erro e derrubar
   // o batch inteiro, sem ter tocado no estoque. É a idempotência do webhook,
   // garantida pelo banco em vez de por um `if`.
-  stmts.push(
-    db
-      .prepare(
-        `INSERT INTO pagamentos
-           (id, pedido_id, provider, external_id, status, valor_centavos, paid_at, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 'APPROVED', ?5, ?6, ?6, ?6)`,
-      )
-      .bind(
-        novoId("pag"),
-        pedidoId,
-        opcoes.provider,
-        opcoes.externalId ?? null,
-        pedido.valor_total_centavos,
-        ts,
-      ),
-  );
+  if (opcoes.provider === "MERCADO_PAGO") {
+    stmts.push(
+      db
+        .prepare(
+          `UPDATE pagamentos
+              SET status = 'APPROVED', external_id = COALESCE(external_id, ?1),
+                  paid_at = ?2, updated_at = ?2
+            WHERE pedido_id = ?3 AND provider = 'MERCADO_PAGO' AND status = 'PENDING'`,
+        )
+        .bind(opcoes.externalId ?? null, ts, pedidoId),
+    );
+  } else {
+    stmts.push(
+      db
+        .prepare(
+          `INSERT INTO pagamentos
+             (id, pedido_id, provider, external_id, status, valor_centavos, paid_at, created_at, updated_at)
+           VALUES (?1, ?2, ?3, ?4, 'APPROVED', ?5, ?6, ?6, ?6)`,
+        )
+        .bind(
+          novoId("pag"),
+          pedidoId,
+          opcoes.provider,
+          opcoes.externalId ?? null,
+          pedido.valor_total_centavos,
+          ts,
+        ),
+    );
+  }
 
   stmts.push(
     db

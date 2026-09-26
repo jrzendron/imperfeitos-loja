@@ -2,7 +2,15 @@ import { useEffect, useRef } from "react";
 import QRCode from "qrcode";
 
 /** Desenha o QR no cliente. Nada de gerar imagem no servidor à toa. */
-export function QrCode({ valor, tamanho = 260 }: { valor: string; tamanho?: number }) {
+export function QrCode({
+  valor,
+  tamanho = 260,
+  rotulo = "QR Code de retirada",
+}: {
+  valor: string;
+  tamanho?: number;
+  rotulo?: string;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -21,7 +29,7 @@ export function QrCode({ valor, tamanho = 260 }: { valor: string; tamanho?: numb
       width={tamanho}
       height={tamanho}
       className="h-auto max-w-full rounded-lg"
-      aria-label="QR Code de retirada"
+      aria-label={rotulo}
     />
   );
 }
