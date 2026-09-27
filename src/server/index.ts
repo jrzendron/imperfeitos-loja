@@ -14,7 +14,7 @@ app.use("*", async (c, next) => {
   await next();
   c.header(
     "Content-Security-Policy",
-    "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self'; worker-src 'self'",
+    "default-src 'self'; base-uri 'self'; connect-src 'self' https://api.mercadopago.com https://*.mercadopago.com; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src https://*.mercadopago.com; img-src 'self' data: blob: https://*.mercadopago.com https://http2.mlstatic.com; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; script-src 'self' https://sdk.mercadopago.com https://www.mercadopago.com; style-src 'self' 'unsafe-inline'; worker-src 'self'",
   );
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "DENY");
@@ -28,6 +28,10 @@ app.use("*", async (c, next) => {
 
 app.get("/api/health", (c) =>
   c.json({ ok: true, app: c.env.APP_NAME, ambiente: c.env.APP_ENV, agora: new Date().toISOString() }),
+);
+
+app.get("/api/pagamentos/config", (c) =>
+  c.json({ mercado_pago_public_key: c.env.MERCADO_PAGO_PUBLIC_KEY || null }),
 );
 
 app.route("/api/produtos", produtosRouter);

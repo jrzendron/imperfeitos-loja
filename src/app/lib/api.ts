@@ -83,6 +83,13 @@ export const api = {
     pedir<{ pagamento: NonNullable<PedidoPublico["pagamento"]> }>(`/pedidos/${token}/pix`, {
       method: "POST",
     }),
+  configuracaoPagamentos: () =>
+    pedir<{ mercado_pago_public_key: string | null }>("/pagamentos/config"),
+  pagarCartao: (token: string, corpo: unknown) =>
+    pedir<{ status: "PAGO" | "PROCESSANDO" | "RECUSADO"; status_detail: string | null }>(
+      `/pedidos/${token}/cartao`,
+      { method: "POST", body: JSON.stringify(corpo) },
+    ),
   qrRetirada: (token: string) =>
     pedir<{ numero: string; status: string; token: string }>(`/pedidos/${token}/retirada`),
   cancelarPedido: (token: string) => pedir<{ ok: true }>(`/pedidos/${token}/cancelar`, { method: "POST" }),

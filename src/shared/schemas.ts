@@ -59,6 +59,27 @@ export const confirmarRetiradaSchema = z
 export type CriarPedidoInput = z.infer<typeof criarPedidoSchema>;
 export type AjusteEstoqueInput = z.infer<typeof ajusteEstoqueSchema>;
 
+export const pagamentoCartaoSchema = z
+  .object({
+    attempt_id: z.string().uuid(),
+    token: z.string().min(10).max(300),
+    payment_method_id: z.string().min(1).max(40),
+    payment_type_id: z.enum(["credit_card", "debit_card", "prepaid_card"]),
+    installments: z.number().int().min(1).max(24),
+    payer: z
+      .object({
+        email: z.string().email().max(160),
+        identification: z
+          .object({ type: z.string().min(1).max(10), number: z.string().min(5).max(30) })
+          .strict(),
+      })
+      .strict(),
+    device_id: z.string().max(200).optional(),
+  })
+  .strict();
+
+export type PagamentoCartaoInput = z.infer<typeof pagamentoCartaoSchema>;
+
 // ─── Produtos (painel administrativo) ────────────────────────────
 
 /** "Camiseta do Encontro 2026" -> "camiseta-do-encontro-2026" */

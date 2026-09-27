@@ -11,3 +11,4 @@ QR_TOKEN_SECRET=dev-qr-secret-local-nao-usar-em-producao
 # Credenciais privadas da aplicação criada em Mercado Pago Developers.
 MERCADO_PAGO_ACCESS_TOKEN=APP_USR-token-de-teste
 MERCADO_PAGO_WEBHOOK_SECRET=assinatura-secreta-do-webhook
+MERCADO_PAGO_PUBLIC_KEY=TEST-chave-publica-de-teste

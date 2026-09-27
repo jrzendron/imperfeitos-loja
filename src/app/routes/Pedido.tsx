@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { api, ErroApi } from "../lib/api";
 import { formatarBRL, formatarDataHora } from "../../shared/format";
 import { Pagina, Carregando, Aviso, Etiqueta } from "../components/ui";
 import { QrCode } from "../components/QrCode";
+import { PagamentoCartao } from "../components/PagamentoCartao";
 import type { PedidoPublico } from "../../shared/types";
 
 export function Pedido() {
@@ -13,7 +14,7 @@ export function Pedido() {
   const [erro, setErro] = useState<string | null>(null);
   const [erroPix, setErroPix] = useState<string | null>(null);
   const [criandoPix, setCriandoPix] = useState(false);
-  const tentouCriarPix = useRef(false);
+  const [metodo, setMetodo] = useState<"pix" | "cartao" | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -49,17 +50,6 @@ export function Pedido() {
     }
   }, [token]);
 
-  useEffect(() => {
-    if (
-      pedido?.status === "AGUARDANDO_PAGAMENTO" &&
-      !pedido.pagamento?.pix_copia_cola &&
-      !tentouCriarPix.current
-    ) {
-      tentouCriarPix.current = true;
-      void gerarPix();
-    }
-  }, [pedido, gerarPix]);
-
   /**
    * Enquanto o pedido aguarda pagamento, a tela reconsulta com intervalo
    * CRESCENTE — 3 s, 8 s, 20 s — e para em qualquer status final.
@@ -92,6 +82,9 @@ export function Pedido() {
   if (!pedido) return <Pagina><Carregando /></Pagina>;
 
   const aguardando = pedido.status === "AGUARDANDO_PAGAMENTO";
+  const podeEscolher =
+    aguardando &&
+    (!pedido.pagamento || ["REJECTED", "CANCELLED"].includes(pedido.pagamento.status));
 
   return (
     <Pagina>
@@ -103,12 +96,42 @@ export function Pedido() {
 
       {aguardando && (
         <div className="mt-5">
-          <Aviso tipo="alerta" titulo="Aguardando pagamento Pix">
-            Pague até o horário indicado. A confirmação ocorre automaticamente e,
-            em seguida, o QR de retirada aparece nesta página.
+          <Aviso tipo="alerta" titulo="Aguardando pagamento">
+            Escolha Pix ou cartão e pague até o horário indicado. A confirmação ocorre
+            automaticamente e, em seguida, o QR de retirada aparece nesta página.
             {pedido.expires_at && (
               <> As peças ficam reservadas até <strong>{formatarDataHora(pedido.expires_at)}</strong>.</>
             )}
+          </Aviso>
+        </div>
+      )}
+
+      {podeEscolher && !metodo && (
+        <section className="cartao mt-5 p-5">
+          <h2 className="text-center font-bold">Como você quer pagar?</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button type="button" className="btn-primario" onClick={() => { setMetodo("pix"); void gerarPix(); }}>
+              Pix
+            </button>
+            <button type="button" className="btn-secundario" onClick={() => setMetodo("cartao")}>
+              Cartão de crédito
+            </button>
+          </div>
+        </section>
+      )}
+
+      {podeEscolher && metodo === "cartao" && (
+        <PagamentoCartao
+          tokenPedido={token}
+          valorCentavos={pedido.valor_total_centavos}
+          aoConcluir={carregar}
+        />
+      )}
+
+      {aguardando && pedido.pagamento?.status === "PENDING" && !pedido.pagamento.pix_copia_cola && metodo !== "cartao" && (
+        <div className="mt-5">
+          <Aviso tipo="alerta" titulo="Pagamento em processamento">
+            Aguarde a confirmação do cartão. Esta página será atualizada automaticamente.
           </Aviso>
         </div>
       )}

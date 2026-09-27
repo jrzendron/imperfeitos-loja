@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { criarPedidoSchema } from "../../shared/schemas";
+import { criarPedidoSchema, pagamentoCartaoSchema } from "../../shared/schemas";
 import { criarPedido, cancelarPedido } from "../services/pedido.service";
-import { criarPix } from "../services/mercado-pago.service";
+import { criarPix, pagarComCartao } from "../services/mercado-pago.service";
 import { sha256, derivarTokenRetirada } from "../utils/crypto";
 import { erro } from "../utils/http";
 import type { PedidoPublico, StatusPedido } from "../../shared/types";
@@ -95,6 +95,12 @@ pedidosRouter.get("/:token", async (c) => {
 pedidosRouter.post("/:token/pix", async (c) => {
   const pagamento = await criarPix(c.env.DB, c.env, c.req.param("token"));
   return c.json({ pagamento });
+});
+
+pedidosRouter.post("/:token/cartao", async (c) => {
+  const corpo = pagamentoCartaoSchema.parse(await c.req.json());
+  const resultado = await pagarComCartao(c.env.DB, c.env, c.req.param("token"), corpo);
+  return c.json(resultado);
 });
 
 /**

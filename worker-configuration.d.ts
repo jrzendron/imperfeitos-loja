@@ -10,6 +10,7 @@ interface Env {
   QR_TOKEN_SECRET: string;
   MERCADO_PAGO_ACCESS_TOKEN: string;
   MERCADO_PAGO_WEBHOOK_SECRET: string;
+  MERCADO_PAGO_PUBLIC_KEY: string;
 
   // Configurações não secretas (wrangler.jsonc -> vars)
   APP_NAME: string;

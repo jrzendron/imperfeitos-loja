@@ -1,7 +1,9 @@
 import type { PedidoPublico } from "../../shared/types";
+import type { PagamentoCartaoInput } from "../../shared/schemas";
 import { sha256 } from "../utils/crypto";
 import { erro, violouUnique } from "../utils/http";
 import { agora, novoId, somarMinutos } from "../utils/ids";
+import { registrarPagamento } from "./pedido.service";
 
 const API = "https://api.mercadopago.com/v1/orders";
 
@@ -215,3 +217,133 @@ export function valorPagoEmCentavos(ordem: OrdemMercadoPago): number {
   return Math.round(Number(valor) * 100);
 }
 
+function ordemFalhou(ordem: OrdemMercadoPago): boolean {
+  const status = ordem.transactions?.payments?.[0]?.status ?? ordem.status;
+  return status === "failed" || status === "cancelled" || status === "rejected";
+}
+
+export interface ResultadoCartao {
+  status: "PAGO" | "PROCESSANDO" | "RECUSADO";
+  status_detail: string | null;
+}
+
+/** Processa o token descartável gerado pelo Card Payment Brick. */
+export async function pagarComCartao(
+  db: D1Database,
+  env: Env,
+  acessoToken: string,
+  entrada: PagamentoCartaoInput,
+): Promise<ResultadoCartao> {
+  const pedido = await localizarPedido(db, acessoToken);
+  const idempotencia = `card-${pedido.id}-${entrada.attempt_id}`;
+  const ts = agora();
+
+  const existente = await db
+    .prepare(
+      `SELECT provider, external_id, idempotency_key, status, pix_copia_cola
+         FROM pagamentos WHERE pedido_id = ?1 LIMIT 1`,
+    )
+    .bind(pedido.id)
+    .first<{
+      provider: string;
+      external_id: string | null;
+      idempotency_key: string | null;
+      status: string;
+      pix_copia_cola: string | null;
+    }>();
+
+  if (existente?.status === "APPROVED") return { status: "PAGO", status_detail: "accredited" };
+  if (existente?.pix_copia_cola || (existente && existente.idempotency_key?.startsWith("pix-"))) {
+    throw erro(409, "PIX_EXISTENTE", "Este pedido já possui uma cobrança Pix.");
+  }
+  if (existente?.status === "PENDING" && existente.idempotency_key !== idempotencia) {
+    throw erro(409, "PAGAMENTO_PROCESSANDO", "Já existe um pagamento sendo processado.");
+  }
+
+  if (!existente) {
+    await db
+      .prepare(
+        `INSERT INTO pagamentos
+           (id, pedido_id, provider, idempotency_key, status, valor_centavos,
+            expires_at, created_at, updated_at)
+         VALUES (?1, ?2, 'MERCADO_PAGO', ?3, 'PENDING', ?4, ?5, ?6, ?6)`,
+      )
+      .bind(
+        novoId("pag"),
+        pedido.id,
+        idempotencia,
+        pedido.valor_total_centavos,
+        pedido.expires_at,
+        ts,
+      )
+      .run();
+  } else if (["REJECTED", "CANCELLED"].includes(existente.status)) {
+    await db
+      .prepare(
+        `UPDATE pagamentos
+            SET idempotency_key = ?1, external_id = NULL, status = 'PENDING',
+                pix_copia_cola = NULL, updated_at = ?2
+          WHERE pedido_id = ?3`,
+      )
+      .bind(idempotencia, ts, pedido.id)
+      .run();
+  } else if (existente.external_id) {
+    const ordem = await obterOrdemMercadoPago(env, existente.external_id);
+    return {
+      status: ordemFoiPaga(ordem) ? "PAGO" : ordemFalhou(ordem) ? "RECUSADO" : "PROCESSANDO",
+      status_detail: ordem.status_detail ?? ordem.transactions?.payments?.[0]?.status_detail ?? null,
+    };
+  }
+
+  const ordem = await chamarMercadoPago(env, "", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": idempotencia,
+      ...(entrada.device_id ? { "X-meli-session-id": entrada.device_id } : {}),
+    },
+    body: JSON.stringify({
+      type: "online",
+      total_amount: dinheiroMercadoPago(pedido.valor_total_centavos),
+      external_reference: pedido.id,
+      processing_mode: "automatic",
+      transactions: {
+        payments: [
+          {
+            amount: dinheiroMercadoPago(pedido.valor_total_centavos),
+            payment_method: {
+              id: entrada.payment_method_id,
+              type: entrada.payment_type_id,
+              token: entrada.token,
+              installments: entrada.installments,
+            },
+          },
+        ],
+      },
+      payer: {
+        email: entrada.payer.email,
+        identification: entrada.payer.identification,
+      },
+    }),
+  });
+
+  const detalhe = ordem.status_detail ?? ordem.transactions?.payments?.[0]?.status_detail ?? null;
+  await db
+    .prepare(
+      `UPDATE pagamentos SET external_id = ?1, status = ?2, updated_at = ?3
+        WHERE pedido_id = ?4 AND idempotency_key = ?5`,
+    )
+    .bind(ordem.id, ordemFalhou(ordem) ? "REJECTED" : "PENDING", ts, pedido.id, idempotencia)
+    .run();
+
+  if (ordemFoiPaga(ordem)) {
+    await registrarPagamento(db, env, pedido.id, {
+      provider: "MERCADO_PAGO",
+      adminEmail: "mercado-pago@cartao",
+      externalId: ordem.id,
+    });
+    return { status: "PAGO", status_detail: detalhe };
+  }
+
+  return { status: ordemFalhou(ordem) ? "RECUSADO" : "PROCESSANDO", status_detail: detalhe };
+}
