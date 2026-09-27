@@ -1,4 +1,5 @@
 import { Pagina } from "../components/ui";
+import { useParams } from "@tanstack/react-router";
 
 /**
  * Página que abre quando alguém aponta a câmera comum do celular para o QR.
@@ -8,6 +9,7 @@ import { Pagina } from "../components/ui";
  * chega neles pelo painel autenticado, não por esta tela.
  */
 export function RetiradaPublica() {
+  const { token } = useParams({ from: "/retirada/$token" });
   return (
     <Pagina>
       <div className="cartao mx-auto max-w-md p-8 text-center">
@@ -16,10 +18,13 @@ export function RetiradaPublica() {
             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <h1 className="mt-4 text-xl font-bold">Pedido pronto para retirada</h1>
+        <h1 className="mt-4 text-xl font-bold">Código de retirada</h1>
+        {token.startsWith("RET-") && (
+          <p className="mt-3 text-2xl font-extrabold tracking-widest text-marca-800">{token}</p>
+        )}
         <p className="mt-2 text-suave">
-          Apresente esta tela no ponto de retirada. O atendente vai escanear o
-          código para confirmar a entrega.
+          Apresente esta tela no ponto de retirada. O atendente vai confirmar o
+          pagamento e escanear o código antes da entrega.
         </p>
       </div>
     </Pagina>

@@ -5,17 +5,12 @@ import { carrinho, useCarrinho } from "../lib/carrinho";
 import { formatarBRL } from "../../shared/format";
 import { Pagina, Aviso } from "../components/ui";
 
-/**
- * Identificação por nome + telefone, sem login e sem CPF.
- * O acesso ao pedido depois é pelo link secreto que o servidor devolve.
- * É a decisão D6 do plano ainda em aberto — e trocar isso por login
- * depois não exige refazer nada aqui além deste formulário.
- */
 export function Checkout() {
   const itens = useCarrinho();
   const navegar = useNavigate();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [cpf, setCpf] = useState("");
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -55,7 +50,7 @@ export function Checkout() {
     try {
       // Só vão o id da variação e a quantidade. Preço, nunca.
       const { acesso_token } = await api.criarPedido({
-        cliente: { nome: nome.trim(), telefone, email: email.trim() },
+        cliente: { nome: nome.trim(), telefone, cpf, email: email.trim() },
         itens: itens.map((i) => ({
           produto_variacao_id: i.produto_variacao_id,
           quantidade: i.quantidade,
@@ -117,8 +112,23 @@ export function Checkout() {
             autoComplete="tel"
             placeholder="(47) 99999-0000"
           />
+          <p className="mt-1.5 text-xs text-suave">Usamos só para avisar sobre o seu pedido.</p>
+        </div>
+
+        <div className="mb-4">
+          <label className="rotulo" htmlFor="cpf">CPF</label>
+          <input
+            id="cpf"
+            className="campo"
+            value={cpf}
+            onChange={(e) => setCpf(e.target.value)}
+            required
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="000.000.000-00"
+          />
           <p className="mt-1.5 text-xs text-suave">
-            Usamos só para avisar sobre o seu pedido. Não pedimos CPF.
+            Usado para você consultar seus pedidos depois. O CPF não fica salvo em texto no sistema.
           </p>
         </div>
 
@@ -155,7 +165,7 @@ export function Checkout() {
 
         <p className="mt-3 text-xs text-suave">
           As peças ficam reservadas por 30 minutos. Você recebe um link para
-          acompanhar o pedido — guarde-o.
+          acompanhar o pedido. Você também poderá recuperá-lo informando seu CPF.
         </p>
       </form>
     </Pagina>

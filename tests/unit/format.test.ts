@@ -26,7 +26,7 @@ describe("telefone", () => {
 
 describe("schema de criação de pedido", () => {
   const base = {
-    cliente: { nome: "Fulano de Tal", telefone: "(47) 99988-7766" },
+    cliente: { nome: "Fulano de Tal", telefone: "(47) 99988-7766", cpf: "529.982.247-25" },
     itens: [{ produto_variacao_id: "var_m", quantidade: 1 }],
   };
 

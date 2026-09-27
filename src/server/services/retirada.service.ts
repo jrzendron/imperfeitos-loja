@@ -20,7 +20,39 @@ export interface ConsultaRetirada {
 }
 
 async function pedidoPorToken(db: D1Database, token: string) {
-  const hash = await sha256(token.trim());
+  const texto = token.trim();
+  let codigo = texto;
+  try {
+    const url = new URL(texto);
+    codigo = url.pathname.split("/").filter(Boolean).at(-1) ?? texto;
+  } catch {
+    // Entrada manual: já é o código/token.
+  }
+
+  if (/^RET-[2-9A-HJ-NP-Z]{8}$/i.test(codigo)) {
+    const porCodigo = await db
+      .prepare(
+        `SELECT p.id, p.numero, p.status, p.valor_total_centavos,
+                c.nome AS cliente_nome, c.telefone AS cliente_telefone,
+                pg.status AS pagamento_status,
+                r.data_hora AS retirado_em, r.admin_email AS retirado_por
+           FROM pedidos p
+           JOIN clientes c ON c.id = p.cliente_id
+           LEFT JOIN pagamentos pg ON pg.pedido_id = p.id
+           LEFT JOIN retiradas r ON r.pedido_id = p.id
+          WHERE p.codigo_retirada = ?1
+          LIMIT 1`,
+      )
+      .bind(codigo.toUpperCase())
+      .first<{
+        id: string; numero: string; status: StatusPedido; valor_total_centavos: number;
+        cliente_nome: string; cliente_telefone: string; pagamento_status: string | null;
+        retirado_em: string | null; retirado_por: string | null;
+      }>();
+    if (porCodigo) return porCodigo;
+  }
+
+  const hash = await sha256(texto);
   return db
     .prepare(
       `SELECT p.id, p.numero, p.status, p.valor_total_centavos,

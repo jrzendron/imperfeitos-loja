@@ -433,13 +433,13 @@ function AbaRetirada() {
         <div className="mt-4 flex flex-wrap gap-2">
           <input
             className="campo min-w-44 flex-1"
-            placeholder="Ou cole o código do QR"
+            placeholder="Digite RET-… ou escaneie o QR"
             value={manual}
             onChange={(e) => setManual(e.target.value)}
           />
           <button
             className="btn-secundario"
-            disabled={manual.trim().length < 10}
+            disabled={manual.trim().length < 8}
             onClick={() => consultar(manual)}
           >
             Consultar

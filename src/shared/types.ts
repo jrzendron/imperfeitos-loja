@@ -56,6 +56,7 @@ export interface ItemPedido {
 
 export interface PedidoPublico {
   numero: string;
+  codigo_retirada: string | null;
   status: StatusPedido;
   valor_total_centavos: number;
   expires_at: string | null;
@@ -70,6 +71,16 @@ export interface PedidoPublico {
     pix_copia_cola: string | null;
     expires_at: string | null;
   } | null;
+}
+
+export interface PedidoConsultadoCpf {
+  numero: string;
+  codigo_retirada: string;
+  status: StatusPedido;
+  valor_total_centavos: number;
+  created_at: string;
+  retirado_em: string | null;
+  itens: Pick<ItemPedido, "produto_nome_snapshot" | "variacao_nome_snapshot" | "quantidade">[];
 }
 
 export interface ApiErro {

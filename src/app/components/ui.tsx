@@ -25,17 +25,22 @@ export function Cabecalho({ admin = false }: { admin?: boolean }) {
           {admin ? (
             <span className="etiqueta bg-marca-100 text-marca-700">Painel</span>
           ) : (
-            <Link
-              to="/carrinho"
-              className="relative rounded-full border border-marca-100 bg-marca-50 px-4 py-2 text-sm font-semibold text-marca-700 transition hover:border-marca-200 hover:bg-marca-100"
-            >
-              Carrinho
-              {total > 0 && (
-                <span className="ml-1.5 rounded-full bg-marca-600 px-1.5 py-0.5 text-xs text-white">
-                  {total}
-                </span>
-              )}
-            </Link>
+            <>
+              <Link to="/meus-pedidos" className="rounded-full px-3 py-2 text-sm font-semibold text-marca-700 transition hover:bg-marca-50">
+                <span className="sm:hidden">Pedidos</span><span className="hidden sm:inline">Meus pedidos</span>
+              </Link>
+              <Link
+                to="/carrinho"
+                className="relative rounded-full border border-marca-100 bg-marca-50 px-4 py-2 text-sm font-semibold text-marca-700 transition hover:border-marca-200 hover:bg-marca-100"
+              >
+                Carrinho
+                {total > 0 && (
+                  <span className="ml-1.5 rounded-full bg-marca-600 px-1.5 py-0.5 text-xs text-white">
+                    {total}
+                  </span>
+                )}
+              </Link>
+            </>
           )}
         </nav>
       </div>

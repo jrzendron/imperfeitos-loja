@@ -20,7 +20,9 @@ export function Pedido() {
     try {
       const { pedido } = await api.pedido(token);
       setPedido(pedido);
-      if (pedido.status !== "AGUARDANDO_PAGAMENTO") {
+      if (pedido.codigo_retirada) {
+        setQr(`${window.location.origin}/retirada/${pedido.codigo_retirada}`);
+      } else if (pedido.status !== "AGUARDANDO_PAGAMENTO") {
         try {
           const r = await api.qrRetirada(token);
           setQr(`${window.location.origin}/retirada/${r.token}`);
@@ -98,7 +100,7 @@ export function Pedido() {
         <div className="mt-5">
           <Aviso tipo="alerta" titulo="Aguardando pagamento">
             Escolha Pix ou cartão e pague até o horário indicado. A confirmação ocorre
-            automaticamente e, em seguida, o QR de retirada aparece nesta página.
+            automaticamente. Seu código já foi criado, mas a retirada só será liberada após o pagamento.
             {pedido.expires_at && (
               <> As peças ficam reservadas até <strong>{formatarDataHora(pedido.expires_at)}</strong>.</>
             )}
@@ -179,9 +181,12 @@ export function Pedido() {
 
       {qr && (
         <section className="cartao mt-5 p-5 text-center">
-          <h2 className="font-bold">Seu QR de retirada</h2>
+          <h2 className="font-bold">Código de retirada</h2>
+          {pedido.codigo_retirada && (
+            <p className="mt-3 text-2xl font-extrabold tracking-widest text-marca-800">{pedido.codigo_retirada}</p>
+          )}
           <p className="mt-1 text-sm text-suave">
-            Mostre esta tela no balcão. Não precisa imprimir.
+            Mostre o código ou o QR no balcão. A entrega será liberada somente após a confirmação do pagamento.
           </p>
           <div className="mt-4 flex justify-center">
             <QrCode valor={qr} />
@@ -210,7 +215,7 @@ export function Pedido() {
       </ul>
 
       <p className="mt-5 text-xs text-suave">
-        Guarde o link desta página: é por ele que você acessa o pedido.
+        Você pode consultar este pedido novamente em “Meus pedidos” usando seu CPF.
         Pedido feito em {formatarDataHora(pedido.created_at)}.
       </p>
     </Pagina>

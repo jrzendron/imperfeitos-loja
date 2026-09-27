@@ -10,6 +10,7 @@ import { CarrinhoPagina } from "./routes/Carrinho";
 import { Checkout } from "./routes/Checkout";
 import { Pedido } from "./routes/Pedido";
 import { RetiradaPublica } from "./routes/RetiradaPublica";
+import { MeusPedidos } from "./routes/MeusPedidos";
 import { Admin } from "./routes/Admin";
 import { Pagina, Aviso } from "./components/ui";
 
@@ -29,6 +30,7 @@ const rotas = [
   createRoute({ getParentRoute: () => raiz, path: "/produto/$slug", component: Produto }),
   createRoute({ getParentRoute: () => raiz, path: "/carrinho", component: CarrinhoPagina }),
   createRoute({ getParentRoute: () => raiz, path: "/checkout", component: Checkout }),
+  createRoute({ getParentRoute: () => raiz, path: "/meus-pedidos", component: MeusPedidos }),
   createRoute({ getParentRoute: () => raiz, path: "/pedido/$token", component: Pedido }),
   createRoute({ getParentRoute: () => raiz, path: "/retirada/$token", component: RetiradaPublica }),
   createRoute({ getParentRoute: () => raiz, path: "/admin", component: Admin }),

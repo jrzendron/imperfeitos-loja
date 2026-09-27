@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { criarPedidoSchema, pagamentoCartaoSchema } from "../../shared/schemas";
+import { criarPedidoSchema, pagamentoCartaoSchema, consultarCpfSchema } from "../../shared/schemas";
 import { criarPedido, cancelarPedido } from "../services/pedido.service";
 import { criarPix, pagarComCartao } from "../services/mercado-pago.service";
-import { sha256, derivarTokenRetirada } from "../utils/crypto";
+import { sha256, derivarTokenRetirada, hmacSha256 } from "../utils/crypto";
 import { erro } from "../utils/http";
-import type { PedidoPublico, StatusPedido } from "../../shared/types";
+import type { PedidoPublico, PedidoConsultadoCpf, StatusPedido } from "../../shared/types";
 
 export const pedidosRouter = new Hono<{ Bindings: Env }>();
 
@@ -16,8 +16,42 @@ export const pedidosRouter = new Hono<{ Bindings: Env }>();
  */
 pedidosRouter.post("/", async (c) => {
   const corpo = criarPedidoSchema.parse(await c.req.json());
-  const { numero, acesso_token } = await criarPedido(c.env.DB, c.env, corpo);
-  return c.json({ numero, acesso_token }, 201);
+  const resultado = await criarPedido(c.env.DB, c.env, corpo);
+  return c.json(resultado, 201);
+});
+
+pedidosRouter.post("/consultar-cpf", async (c) => {
+  const { cpf } = consultarCpfSchema.parse(await c.req.json());
+  const cpfHash = await hmacSha256(c.env.CPF_PEPPER, cpf);
+  const cliente = await c.env.DB.prepare(`SELECT id FROM clientes WHERE cpf_hash = ?1 LIMIT 1`)
+    .bind(cpfHash)
+    .first<{ id: string }>();
+
+  c.header("Cache-Control", "no-store");
+  if (!cliente) return c.json({ pedidos: [] as PedidoConsultadoCpf[] });
+
+  const { results: linhas } = await c.env.DB.prepare(
+    `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos,
+            p.created_at, r.data_hora AS retirado_em
+       FROM pedidos p
+       LEFT JOIN retiradas r ON r.pedido_id = p.id
+      WHERE p.cliente_id = ?1 AND p.codigo_retirada IS NOT NULL
+      ORDER BY p.created_at DESC
+      LIMIT 30`,
+  ).bind(cliente.id).all<{
+    id: string; numero: string; codigo_retirada: string; status: StatusPedido;
+    valor_total_centavos: number; created_at: string; retirado_em: string | null;
+  }>();
+
+  const pedidos: PedidoConsultadoCpf[] = [];
+  for (const linha of linhas) {
+    const { results: itens } = await c.env.DB.prepare(
+      `SELECT produto_nome_snapshot, variacao_nome_snapshot, quantidade
+         FROM pedido_itens WHERE pedido_id = ?1 ORDER BY created_at`,
+    ).bind(linha.id).all<PedidoConsultadoCpf["itens"][number]>();
+    pedidos.push({ ...linha, itens });
+  }
+  return c.json({ pedidos });
 });
 
 async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPublico> {
@@ -25,7 +59,7 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
 
   const pedido = await db
     .prepare(
-      `SELECT p.id, p.numero, p.status, p.valor_total_centavos, p.expires_at, p.created_at,
+      `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos, p.expires_at, p.created_at,
               c.nome AS cliente_nome,
               t.id   AS token_id,
               r.data_hora AS retirado_em
@@ -40,6 +74,7 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
     .first<{
       id: string;
       numero: string;
+      codigo_retirada: string | null;
       status: StatusPedido;
       valor_total_centavos: number;
       expires_at: string | null;
@@ -70,6 +105,7 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
 
   return {
     numero: pedido.numero,
+    codigo_retirada: pedido.codigo_retirada,
     status: pedido.status,
     valor_total_centavos: pedido.valor_total_centavos,
     expires_at: pedido.expires_at,

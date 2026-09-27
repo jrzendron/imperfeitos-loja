@@ -16,6 +16,25 @@ export const telefoneSchema = z
     message: "Telefone deve ter DDD + número (10 ou 11 dígitos).",
   });
 
+export function cpfValido(valor: string): boolean {
+  const cpf = valor.replace(/\D/g, "");
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  const calcularDigito = (tamanho: number) => {
+    let soma = 0;
+    for (let i = 0; i < tamanho; i++) soma += Number(cpf[i]) * (tamanho + 1 - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+
+  return calcularDigito(9) === Number(cpf[9]) && calcularDigito(10) === Number(cpf[10]);
+}
+
+export const cpfSchema = z
+  .string()
+  .transform((v) => v.replace(/\D/g, ""))
+  .refine(cpfValido, { message: "Informe um CPF válido." });
+
 export const itemPedidoSchema = z
   .object({
     produto_variacao_id: z.string().min(1).max(64),
@@ -29,12 +48,15 @@ export const criarPedidoSchema = z
       .object({
         nome: z.string().trim().min(3, "Informe o nome completo.").max(120),
         telefone: telefoneSchema,
+        cpf: cpfSchema,
         email: z.string().trim().email().max(160).optional().or(z.literal("")),
       })
       .strict(),
     itens: z.array(itemPedidoSchema).min(1, "O carrinho está vazio.").max(20),
   })
   .strict();
+
+export const consultarCpfSchema = z.object({ cpf: cpfSchema }).strict();
 
 export const ajusteEstoqueSchema = z
   .object({
@@ -46,12 +68,12 @@ export const ajusteEstoqueSchema = z
   .strict();
 
 export const tokenRetiradaSchema = z
-  .object({ token: z.string().trim().min(10).max(200) })
+  .object({ token: z.string().trim().min(8).max(300) })
   .strict();
 
 export const confirmarRetiradaSchema = z
   .object({
-    token: z.string().trim().min(10).max(200),
+    token: z.string().trim().min(8).max(300),
     observacao: z.string().trim().max(240).optional(),
   })
   .strict();

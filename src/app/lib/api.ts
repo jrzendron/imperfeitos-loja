@@ -1,4 +1,4 @@
-import type { ProdutoPublico, PedidoPublico } from "../../shared/types";
+import type { ProdutoPublico, PedidoPublico, PedidoConsultadoCpf } from "../../shared/types";
 
 export class ErroApi extends Error {
   constructor(readonly status: number, readonly codigo: string, mensagem: string) {
@@ -73,9 +73,14 @@ export const api = {
   produto: (slug: string) => pedir<{ produto: ProdutoPublico }>(`/produtos/${slug}`),
 
   criarPedido: (corpo: unknown) =>
-    pedir<{ numero: string; acesso_token: string }>("/pedidos", {
+    pedir<{ numero: string; acesso_token: string; codigo_retirada: string }>("/pedidos", {
       method: "POST",
       body: JSON.stringify(corpo),
+    }),
+  consultarPedidosCpf: (cpf: string) =>
+    pedir<{ pedidos: PedidoConsultadoCpf[] }>("/pedidos/consultar-cpf", {
+      method: "POST",
+      body: JSON.stringify({ cpf }),
     }),
 
   pedido: (token: string) => pedir<{ pedido: PedidoPublico }>(`/pedidos/${token}`),

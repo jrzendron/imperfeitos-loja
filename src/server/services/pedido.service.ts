@@ -1,6 +1,6 @@
 import type { CriarPedidoInput } from "../../shared/schemas";
-import { novoId, agora, somarMinutos } from "../utils/ids";
-import { gerarTokenRetirada, gerarNonce, derivarTokenRetirada, sha256 } from "../utils/crypto";
+import { novoId, agora, somarMinutos, gerarCodigoRetirada } from "../utils/ids";
+import { gerarTokenRetirada, gerarNonce, derivarTokenRetirada, sha256, hmacSha256 } from "../utils/crypto";
 import { erro, violouCheck, violouUnique } from "../utils/http";
 import { auditar } from "./auditoria.service";
 
@@ -42,18 +42,20 @@ async function alocarNumero(db: D1Database, prefixo: string): Promise<string> {
 
 async function acharOuCriarCliente(
   db: D1Database,
+  env: Env,
   cliente: CriarPedidoInput["cliente"],
 ): Promise<string> {
   const ts = agora();
+  const cpfHash = await hmacSha256(env.CPF_PEPPER, cliente.cpf);
   const existente = await db
-    .prepare(`SELECT id FROM clientes WHERE telefone = ?1 LIMIT 1`)
-    .bind(cliente.telefone)
+    .prepare(`SELECT id FROM clientes WHERE cpf_hash = ?1 OR telefone = ?2 ORDER BY cpf_hash = ?1 DESC LIMIT 1`)
+    .bind(cpfHash, cliente.telefone)
     .first<{ id: string }>();
 
   if (existente) {
     await db
-      .prepare(`UPDATE clientes SET nome = ?1, email = COALESCE(?2, email), updated_at = ?3 WHERE id = ?4`)
-      .bind(cliente.nome, cliente.email || null, ts, existente.id)
+      .prepare(`UPDATE clientes SET nome = ?1, telefone = ?2, email = COALESCE(?3, email), cpf_hash = ?4, updated_at = ?5 WHERE id = ?6`)
+      .bind(cliente.nome, cliente.telefone, cliente.email || null, cpfHash, ts, existente.id)
       .run();
     return existente.id;
   }
@@ -61,10 +63,10 @@ async function acharOuCriarCliente(
   const id = novoId("cli");
   await db
     .prepare(
-      `INSERT INTO clientes (id, nome, telefone, email, ativo, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, 1, ?5, ?5)`,
+      `INSERT INTO clientes (id, nome, telefone, email, cpf_hash, ativo, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?6)`,
     )
-    .bind(id, cliente.nome, cliente.telefone, cliente.email || null, ts)
+    .bind(id, cliente.nome, cliente.telefone, cliente.email || null, cpfHash, ts)
     .run();
   return id;
 }
@@ -85,7 +87,7 @@ export async function criarPedido(
   db: D1Database,
   env: Env,
   entrada: CriarPedidoInput,
-): Promise<{ numero: string; acesso_token: string }> {
+): Promise<{ numero: string; acesso_token: string; codigo_retirada: string }> {
   const itens = consolidarItens(entrada.itens);
   const ts = agora();
 
@@ -108,11 +110,12 @@ export async function criarPedido(
 
   // 2. Número e cliente, antes do batch.
   const numero = await alocarNumero(db, env.ORDER_PREFIX || "PED");
-  const clienteId = await acharOuCriarCliente(db, entrada.cliente);
+  const clienteId = await acharOuCriarCliente(db, env, entrada.cliente);
 
   const pedidoId = novoId("ped");
   const acessoToken = gerarTokenRetirada();
   const acessoHash = await sha256(acessoToken);
+  const codigoRetirada = gerarCodigoRetirada();
   const minutos = Number(env.ORDER_EXPIRATION_MINUTES ?? 30) || 30;
 
   const stmts: D1PreparedStatement[] = [];
@@ -137,12 +140,12 @@ export async function criarPedido(
   stmts.push(
     db
       .prepare(
-        `INSERT INTO pedidos
+         `INSERT INTO pedidos
            (id, numero, cliente_id, status, valor_total_centavos,
-            acesso_token_hash, expires_at, created_at, updated_at)
-         VALUES (?1, ?2, ?3, 'AGUARDANDO_PAGAMENTO', 0, ?4, ?5, ?6, ?6)`,
+            acesso_token_hash, codigo_retirada, expires_at, created_at, updated_at)
+         VALUES (?1, ?2, ?3, 'AGUARDANDO_PAGAMENTO', 0, ?4, ?5, ?6, ?7, ?7)`,
       )
-      .bind(pedidoId, numero, clienteId, acessoHash, somarMinutos(ts, minutos), ts),
+      .bind(pedidoId, numero, clienteId, acessoHash, codigoRetirada, somarMinutos(ts, minutos), ts),
   );
 
   // 3c. Os itens. INSERT ... SELECT lê o preço DE DENTRO da transação,
@@ -226,7 +229,7 @@ export async function criarPedido(
     metadata: { numero, itens: itens.length },
   });
 
-  return { numero, acesso_token: acessoToken };
+  return { numero, acesso_token: acessoToken, codigo_retirada: codigoRetirada };
 }
 
 /**

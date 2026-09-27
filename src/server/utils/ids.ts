@@ -10,3 +10,10 @@ export function agora(): string {
 export function somarMinutos(iso: string, minutos: number): string {
   return new Date(new Date(iso).getTime() + minutos * 60_000).toISOString();
 }
+
+/** Código curto para digitação no balcão, sem caracteres ambíguos. */
+export function gerarCodigoRetirada(): string {
+  const alfabeto = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return `RET-${[...bytes].map((b) => alfabeto[b % alfabeto.length]).join("")}`;
+}

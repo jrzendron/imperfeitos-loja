@@ -63,6 +63,18 @@ export async function sha256(valor: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+export async function hmacSha256(segredo: string, valor: string): Promise<string> {
+  const chave = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(segredo),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const assinatura = await crypto.subtle.sign("HMAC", chave, new TextEncoder().encode(valor));
+  return [...new Uint8Array(assinatura)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * Comparação em tempo constante. Usada no token do admin em
  * desenvolvimento; em produção quem autentica é o Cloudflare Access.

@@ -8,6 +8,7 @@ interface Env {
   // Secrets (.dev.vars em desenvolvimento, Cloudflare Secrets em produção)
   ADMIN_TOKEN: string;
   QR_TOKEN_SECRET: string;
+  CPF_PEPPER: string;
   MERCADO_PAGO_ACCESS_TOKEN: string;
   MERCADO_PAGO_WEBHOOK_SECRET: string;
   MERCADO_PAGO_PUBLIC_KEY: string;
