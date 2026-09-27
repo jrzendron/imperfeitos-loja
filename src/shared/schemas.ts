@@ -78,6 +78,10 @@ export const confirmarRetiradaSchema = z
   })
   .strict();
 
+export const editarItensPedidoSchema = z
+  .object({ itens: z.array(itemPedidoSchema).min(1, "O pedido precisa ter ao menos um item.").max(20) })
+  .strict();
+
 export type CriarPedidoInput = z.infer<typeof criarPedidoSchema>;
 export type AjusteEstoqueInput = z.infer<typeof ajusteEstoqueSchema>;
 

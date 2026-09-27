@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { criarPedidoSchema, pagamentoCartaoSchema, consultarCpfSchema } from "../../shared/schemas";
-import { criarPedido, cancelarPedido } from "../services/pedido.service";
+import { criarPedido, cancelarPedido, escolherPagamentoDinheiro } from "../services/pedido.service";
 import { criarPix, pagarComCartao } from "../services/mercado-pago.service";
 import { sha256, derivarTokenRetirada, hmacSha256 } from "../utils/crypto";
 import { erro } from "../utils/http";
@@ -32,7 +32,8 @@ pedidosRouter.post("/consultar-cpf", async (c) => {
 
   const { results: linhas } = await c.env.DB.prepare(
     `SELECT p.id, p.numero,
-            CASE WHEN pg.status = 'APPROVED' THEN p.codigo_retirada ELSE NULL END AS codigo_retirada,
+            CASE WHEN pg.status = 'APPROVED' OR (p.status = 'AGUARDANDO_PAGAMENTO' AND pg.provider = 'MANUAL' AND pg.status = 'PENDING')
+                 THEN p.codigo_retirada ELSE NULL END AS codigo_retirada,
             p.status, p.valor_total_centavos,
             p.created_at, r.data_hora AS retirado_em
        FROM pedidos p
@@ -108,7 +109,10 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
 
   return {
     numero: pedido.numero,
-    codigo_retirada: pagamento?.status === "APPROVED" ? pedido.codigo_retirada : null,
+    codigo_retirada:
+      pagamento?.status === "APPROVED" || (pedido.status === "AGUARDANDO_PAGAMENTO" && pagamento?.provider === "MANUAL" && pagamento.status === "PENDING")
+        ? pedido.codigo_retirada
+        : null,
     status: pedido.status,
     valor_total_centavos: pedido.valor_total_centavos,
     expires_at: pedido.expires_at,
@@ -140,6 +144,11 @@ pedidosRouter.post("/:token/cartao", async (c) => {
   const corpo = pagamentoCartaoSchema.parse(await c.req.json());
   const resultado = await pagarComCartao(c.env.DB, c.env, c.req.param("token"), corpo);
   return c.json(resultado);
+});
+
+pedidosRouter.post("/:token/dinheiro", async (c) => {
+  const pagamento = await escolherPagamentoDinheiro(c.env.DB, c.req.param("token"));
+  return c.json({ pagamento });
 });
 
 /**

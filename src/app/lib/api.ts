@@ -95,6 +95,8 @@ export const api = {
       `/pedidos/${token}/cartao`,
       { method: "POST", body: JSON.stringify(corpo) },
     ),
+  pagarEmDinheiro: (token: string) =>
+    pedir<{ pagamento: NonNullable<PedidoPublico["pagamento"]> }>(`/pedidos/${token}/dinheiro`, { method: "POST" }),
   qrRetirada: (token: string) =>
     pedir<{ numero: string; status: string; token: string }>(`/pedidos/${token}/retirada`),
   cancelarPedido: (token: string) => pedir<{ ok: true }>(`/pedidos/${token}/cancelar`, { method: "POST" }),
@@ -109,6 +111,12 @@ export const api = {
       pedir<any>(`/admin/pedidos/${id}/marcar-pago`, { method: "POST", admin: true }),
     cancelar: (id: string) =>
       pedir<any>(`/admin/pedidos/${id}/cancelar`, { method: "POST", admin: true }),
+    alterarItens: (id: string, itens: unknown[]) =>
+      pedir<any>(`/admin/pedidos/${id}/itens`, {
+        method: "PUT",
+        body: JSON.stringify({ itens }),
+        admin: true,
+      }),
     ajustarEstoque: (corpo: unknown) =>
       pedir<any>("/admin/estoque/ajuste", { method: "POST", body: JSON.stringify(corpo), admin: true }),
     consultarRetirada: (token: string) =>

@@ -14,7 +14,9 @@ export function Pedido() {
   const [erro, setErro] = useState<string | null>(null);
   const [erroPix, setErroPix] = useState<string | null>(null);
   const [criandoPix, setCriandoPix] = useState(false);
-  const [metodo, setMetodo] = useState<"pix" | "cartao" | null>(null);
+  const [metodo, setMetodo] = useState<"pix" | "cartao" | "dinheiro" | null>(null);
+  const [ativandoDinheiro, setAtivandoDinheiro] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -53,6 +55,32 @@ export function Pedido() {
       setCriandoPix(false);
     }
   }, [token]);
+
+  const escolherDinheiro = useCallback(async () => {
+    setAtivandoDinheiro(true);
+    setErroPix(null);
+    try {
+      await api.pagarEmDinheiro(token);
+      await carregar();
+    } catch (e) {
+      setErroPix(e instanceof ErroApi ? e.message : "Não foi possível reservar para pagamento em dinheiro.");
+    } finally {
+      setAtivandoDinheiro(false);
+    }
+  }, [token, carregar]);
+
+  async function cancelar() {
+    if (!window.confirm("Cancelar este pedido e devolver as peças ao estoque?")) return;
+    setCancelando(true);
+    try {
+      await api.cancelarPedido(token);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof ErroApi ? e.message : "Não foi possível cancelar o pedido.");
+    } finally {
+      setCancelando(false);
+    }
+  }
 
   /**
    * Enquanto o pedido aguarda pagamento, a tela reconsulta com intervalo
@@ -113,12 +141,15 @@ export function Pedido() {
       {podeEscolher && (
         <section className="cartao mt-5 p-5">
           <h2 className="text-center font-bold">Como você quer pagar?</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <button type="button" className={metodo === "pix" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("pix")}>
               Pix
             </button>
             <button type="button" className={metodo === "cartao" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("cartao")}>
               Cartão de crédito
+            </button>
+            <button type="button" className={metodo === "dinheiro" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("dinheiro")}>
+              Dinheiro
             </button>
           </div>
           {metodo === "pix" && (
@@ -126,6 +157,14 @@ export function Pedido() {
               <p className="text-sm text-suave">Vamos gerar um QR Code Pix para este pedido.</p>
               <button type="button" className="btn-primario mt-3 w-full" disabled={criandoPix} onClick={() => void gerarPix()}>
                 {criandoPix ? "Gerando Pix…" : "Continuar com Pix"}
+              </button>
+            </div>
+          )}
+          {metodo === "dinheiro" && (
+            <div className="mt-4 rounded-lg border border-marca-100 bg-marca-50 p-4 text-center">
+              <p className="text-sm text-suave">As peças ficarão reservadas e o pagamento será confirmado pela equipe no dia da retirada.</p>
+              <button type="button" className="btn-primario mt-3 w-full" disabled={ativandoDinheiro} onClick={() => void escolherDinheiro()}>
+                {ativandoDinheiro ? "Reservando…" : "Reservar e pagar na retirada"}
               </button>
             </div>
           )}
@@ -140,7 +179,15 @@ export function Pedido() {
         />
       )}
 
-      {aguardando && pedido.pagamento?.status === "PENDING" && !pedido.pagamento.pix_copia_cola && (
+      {aguardando && pedido.pagamento?.provider === "MANUAL" && pedido.pagamento.status === "PENDING" && (
+        <div className="mt-5">
+          <Aviso tipo="sucesso" titulo="Pagamento em dinheiro">
+            Pedido reservado. Apresente o código abaixo e faça o pagamento no dia da retirada.
+          </Aviso>
+        </div>
+      )}
+
+      {aguardando && pedido.pagamento?.provider !== "MANUAL" && pedido.pagamento?.status === "PENDING" && !pedido.pagamento.pix_copia_cola && (
         <div className="mt-5">
           <Aviso tipo="alerta" titulo="Pagamento em processamento">
             Aguarde a confirmação do cartão. Esta página será atualizada automaticamente.
@@ -176,12 +223,10 @@ export function Pedido() {
         </section>
       )}
 
-      {aguardando && erroPix && metodo === "pix" && (
+      {aguardando && erroPix && (metodo === "pix" || metodo === "dinheiro") && (
         <div className="mt-5">
           <Aviso tipo="erro" titulo="Não foi possível gerar o Pix">{erroPix}</Aviso>
-          <button type="button" className="btn-secundario mt-3" onClick={() => void gerarPix()}>
-            Tentar novamente
-          </button>
+          {metodo === "pix" && <button type="button" className="btn-secundario mt-3" onClick={() => void gerarPix()}>Tentar novamente</button>}
         </div>
       )}
 
@@ -219,6 +264,12 @@ export function Pedido() {
           <span className="tabular-nums">{formatarBRL(pedido.valor_total_centavos)}</span>
         </li>
       </ul>
+
+      {aguardando && (
+        <button type="button" className="btn-perigo mt-4 w-full sm:w-auto" disabled={cancelando} onClick={() => void cancelar()}>
+          {cancelando ? "Cancelando…" : "Cancelar pedido"}
+        </button>
+      )}
 
       <p className="mt-5 text-xs text-suave">
         Você pode consultar este pedido novamente em “Meus pedidos” usando seu CPF.

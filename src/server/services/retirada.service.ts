@@ -11,8 +11,10 @@ export interface ConsultaRetirada {
   cliente_nome: string;
   cliente_telefone: string;
   valor_total_centavos: number;
-  itens: { descricao: string; quantidade: number }[];
+  itens: { produto_variacao_id: string; produto_nome: string; variacao_nome: string; descricao: string; quantidade: number }[];
   pago: boolean;
+  pagamento_provider: string | null;
+  pagamento_em_dinheiro: boolean;
   retirado_em: string | null;
   retirado_por: string | null;
   pode_retirar: boolean;
@@ -34,7 +36,7 @@ async function pedidoPorToken(db: D1Database, token: string) {
       .prepare(
         `SELECT p.id, p.numero, p.status, p.valor_total_centavos,
                 c.nome AS cliente_nome, c.telefone AS cliente_telefone,
-                pg.status AS pagamento_status,
+                pg.status AS pagamento_status, pg.provider AS pagamento_provider,
                 r.data_hora AS retirado_em, r.admin_email AS retirado_por
            FROM pedidos p
            JOIN clientes c ON c.id = p.cliente_id
@@ -46,7 +48,7 @@ async function pedidoPorToken(db: D1Database, token: string) {
       .bind(codigo.toUpperCase())
       .first<{
         id: string; numero: string; status: StatusPedido; valor_total_centavos: number;
-        cliente_nome: string; cliente_telefone: string; pagamento_status: string | null;
+        cliente_nome: string; cliente_telefone: string; pagamento_status: string | null; pagamento_provider: string | null;
         retirado_em: string | null; retirado_por: string | null;
       }>();
     if (porCodigo) return porCodigo;
@@ -57,7 +59,7 @@ async function pedidoPorToken(db: D1Database, token: string) {
     .prepare(
       `SELECT p.id, p.numero, p.status, p.valor_total_centavos,
               c.nome AS cliente_nome, c.telefone AS cliente_telefone,
-              pg.status AS pagamento_status,
+              pg.status AS pagamento_status, pg.provider AS pagamento_provider,
               r.data_hora AS retirado_em, r.admin_email AS retirado_por
          FROM retirada_tokens t
          JOIN pedidos  p  ON p.id = t.pedido_id
@@ -76,6 +78,7 @@ async function pedidoPorToken(db: D1Database, token: string) {
       cliente_nome: string;
       cliente_telefone: string;
       pagamento_status: string | null;
+      pagamento_provider: string | null;
       retirado_em: string | null;
       retirado_por: string | null;
     }>();
@@ -94,18 +97,20 @@ export async function consultarPorToken(db: D1Database, token: string): Promise<
 
   const { results: itens } = await db
     .prepare(
-      `SELECT produto_nome_snapshot, variacao_nome_snapshot, quantidade
+      `SELECT produto_variacao_id, produto_nome_snapshot, variacao_nome_snapshot, quantidade
          FROM pedido_itens WHERE pedido_id = ?1`,
     )
     .bind(pedido.id)
-    .all<{ produto_nome_snapshot: string; variacao_nome_snapshot: string; quantidade: number }>();
+    .all<{ produto_variacao_id: string; produto_nome_snapshot: string; variacao_nome_snapshot: string; quantidade: number }>();
 
   const pago = pedido.pagamento_status === "APPROVED";
+  const pagamentoEmDinheiro = pedido.pagamento_status === "PENDING" && pedido.pagamento_provider === "MANUAL";
   const jaRetirado = Boolean(pedido.retirado_em);
   const statusOk = STATUS_RETIRAVEL.includes(pedido.status);
 
   let impedimento: string | null = null;
   if (jaRetirado) impedimento = "PEDIDO JÁ RETIRADO";
+  else if (["CANCELADO", "EXPIRADO", "REEMBOLSADO"].includes(pedido.status)) impedimento = `PEDIDO ${pedido.status}`;
   else if (!pago) impedimento = "PAGAMENTO NÃO CONFIRMADO";
   else if (!statusOk) impedimento = `PEDIDO ESTÁ COMO ${pedido.status}`;
 
@@ -117,10 +122,15 @@ export async function consultarPorToken(db: D1Database, token: string): Promise<
     cliente_telefone: pedido.cliente_telefone,
     valor_total_centavos: pedido.valor_total_centavos,
     itens: itens.map((i) => ({
+      produto_variacao_id: i.produto_variacao_id,
+      produto_nome: i.produto_nome_snapshot,
+      variacao_nome: i.variacao_nome_snapshot,
       descricao: `${i.produto_nome_snapshot} — ${i.variacao_nome_snapshot}`,
       quantidade: i.quantidade,
     })),
     pago,
+    pagamento_provider: pedido.pagamento_provider,
+    pagamento_em_dinheiro: pagamentoEmDinheiro,
     retirado_em: pedido.retirado_em,
     retirado_por: pedido.retirado_por,
     pode_retirar: impedimento === null,
