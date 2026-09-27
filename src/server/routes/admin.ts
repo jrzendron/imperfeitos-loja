@@ -86,15 +86,26 @@ adminRouter.get("/pedidos", async (c) => {
   }
 
   const onde = condicoes.length ? `WHERE ${condicoes.join(" AND ")}` : "";
+  const valoresFiltro = [...valores];
+  let consultaTotal = c.env.DB.prepare(
+    `SELECT COUNT(*) AS total FROM pedidos p JOIN clientes c ON c.id = p.cliente_id ${onde}`,
+  );
+  if (valoresFiltro.length) consultaTotal = consultaTotal.bind(...valoresFiltro);
+  const contagem = await consultaTotal.first<{ total: number }>();
   valores.push(limite, (pagina - 1) * limite);
 
   const { results } = await c.env.DB.prepare(
-    `SELECT p.id, p.numero, p.status, p.valor_total_centavos, p.created_at, p.expires_at,
+    `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos, p.created_at, p.expires_at,
             c.nome AS cliente_nome, c.telefone AS cliente_telefone,
+            pg.status AS pagamento_status, pg.provider AS pagamento_provider, pg.paid_at,
+            r.data_hora AS retirado_em, r.admin_email AS retirado_por,
             (SELECT COUNT(*) FROM pedido_itens i WHERE i.pedido_id = p.id) AS itens,
+            (SELECT GROUP_CONCAT(i.quantidade || '× ' || i.produto_nome_snapshot || ' — ' || i.variacao_nome_snapshot, ' | ')
+               FROM pedido_itens i WHERE i.pedido_id = p.id) AS itens_resumo,
             CASE WHEN r.id IS NULL THEN 0 ELSE 1 END AS retirado
        FROM pedidos p
        JOIN clientes c ON c.id = p.cliente_id
+       LEFT JOIN pagamentos pg ON pg.pedido_id = p.id
        LEFT JOIN retiradas r ON r.pedido_id = p.id
        ${onde}
       ORDER BY p.created_at DESC
@@ -103,7 +114,7 @@ adminRouter.get("/pedidos", async (c) => {
     .bind(...valores)
     .all();
 
-  return c.json({ pedidos: results, pagina, limite });
+  return c.json({ pedidos: results, pagina, limite, total: contagem?.total ?? 0 });
 });
 
 adminRouter.get("/pedidos/:id", async (c) => {

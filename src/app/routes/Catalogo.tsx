@@ -20,40 +20,28 @@ export function Catalogo() {
   return (
     <Pagina>
       <section className="hero-loja overflow-hidden rounded-[1.75rem] border border-white/70 px-6 py-10 shadow-[0_24px_70px_rgba(8,87,75,0.13)] sm:px-10 sm:py-14 lg:px-14 lg:py-16">
-        <div className="max-w-xl">
+        <div className="max-w-lg">
           <span className="inline-flex rounded-full border border-marca-200/70 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-marca-700 backdrop-blur">
             Igreja Pentecostal Deus é Amor
           </span>
           <h1 className="mt-5 text-4xl font-black leading-[1.05] tracking-[-0.035em] text-marca-900 sm:text-5xl">
-            Nossa fé também inspira o que vestimos
+            Camiseta IMPERFEITOS
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed text-suave sm:text-lg">
-            Conheça a camiseta IMPERFEITOS, escolha seus tamanhos e faça seu pedido para retirada.
+            Escolha os tamanhos, faça o pagamento e retire seu pedido no local indicado pela igreja.
           </p>
           <a href="#camiseta" className="btn-primario mt-6 shadow-lg shadow-marca-900/15">
-            Ver camiseta
+            Fazer pedido
           </a>
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-marca-900/70">
+            <span>Pagamento online</span><span>Retirada presencial</span>
+          </div>
         </div>
       </section>
 
-      <section aria-label="Sobre a igreja" className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="cartao bg-white/80 p-4 shadow-sm backdrop-blur">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-marca-600">Desde 1962</p>
-          <p className="mt-1 font-semibold text-marca-900">Fundada em 3 de junho</p>
-        </div>
-        <div className="cartao bg-white/80 p-4 shadow-sm backdrop-blur">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-marca-600">Nossa caminhada</p>
-          <p className="mt-1 font-semibold text-marca-900">Fé, evangelização e cuidado</p>
-        </div>
-        <div className="cartao bg-white/80 p-4 shadow-sm backdrop-blur">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-marca-600">Fundador</p>
-          <p className="mt-1 font-semibold text-marca-900">Missionário David Martins Miranda</p>
-        </div>
-      </section>
-
-      <div id="camiseta" className="mb-5 mt-10 scroll-mt-24">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-marca-600">Coleção especial</p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Camiseta IMPERFEITOS</h2>
+      <div id="camiseta" className="mb-5 mt-8 scroll-mt-24">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-marca-600">Loja da igreja</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Produto disponível</h2>
       </div>
 
       {erro && (

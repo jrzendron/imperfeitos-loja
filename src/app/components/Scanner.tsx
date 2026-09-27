@@ -64,10 +64,12 @@ export function Scanner({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-tinta">
-      <video ref={video} className="aspect-square w-full max-w-full object-cover" muted playsInline />
+    <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-black sm:aspect-square">
+      <video ref={video} className="h-full min-h-[55dvh] w-full object-cover sm:min-h-0" muted playsInline />
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
-        <div className="h-3/5 w-3/5 rounded-lg border-2 border-white/70" />
+        <div className="relative aspect-square w-[72%] max-w-80 rounded-2xl border-4 border-white shadow-[0_0_0_999px_rgba(0,0,0,0.38)]">
+          <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">Centralize o QR aqui</span>
+        </div>
       </div>
     </div>
   );
