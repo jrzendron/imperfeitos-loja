@@ -147,6 +147,17 @@ export async function criarPix(
     } catch (e) {
       if (!violouUnique(e)) throw e;
     }
+  } else if (["REJECTED", "CANCELLED"].includes(existente.status)) {
+    await db
+      .prepare(
+        `UPDATE pagamentos
+            SET provider = 'MERCADO_PAGO', external_id = NULL, idempotency_key = ?1,
+                status = 'PENDING', valor_centavos = ?2, pix_copia_cola = NULL,
+                expires_at = ?3, paid_at = NULL, updated_at = ?4
+          WHERE pedido_id = ?5 AND status IN ('REJECTED','CANCELLED')`,
+      )
+      .bind(idempotencia, pedido.valor_total_centavos, expiraEm, ts, pedido.id)
+      .run();
   }
 
   const ordem = await chamarMercadoPago(env, "", {

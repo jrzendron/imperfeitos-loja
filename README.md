@@ -42,12 +42,11 @@ Abre em **http://localhost:5173**.
 
 ### Dando uma volta completa
 
-1. Escolha um tamanho, adicione ao carrinho, finalize com nome e telefone.
+1. Escolha os tamanhos, adicione ao carrinho e finalize com nome, telefone, CPF e e-mail.
 2. Você cai na página do pedido, com status **Aguardando pagamento**.
-   Deixe essa aba aberta.
-3. Em outra aba, vá em `/admin`, aba **Pedidos**, e clique em
-   **Confirmar pagamento**.
-4. Volte à aba do pedido: o QR apareceu sozinho, sem recarregar.
+3. Escolha Pix, cartão ou pagamento em dinheiro na retirada. Pix e cartão são
+   confirmados pelo Mercado Pago; dinheiro é confirmado pela equipe no painel.
+4. Depois da confirmação, o código e o QR de retirada aparecem automaticamente.
 5. No `/admin`, aba **Retirada**, clique em **Abrir leitor** e aponte a
    câmera para o QR. (Sem câmera? Copie o trecho final da URL do QR e
    cole no campo manual.)
@@ -173,15 +172,16 @@ tests/
 
 ---
 
-## O que falta, na ordem
+## Próximos controles operacionais
 
-1. **Mercado Pago** — criar o Pix, exibir o Copia-e-Cola, receber o webhook.
-   O webhook chama `registrarPagamento()`, que já existe e já é idempotente.
-2. **Cloudflare Access** no `/admin`. Hoje o painel usa um token compartilhado
-   do `.dev.vars`, que serve só para desenvolvimento e está marcado como tal
-   no código. Ver `src/server/middleware/admin.ts`.
-3. **Reordenar fotos** arrastando, e **tela de auditoria**. Os eventos já são
-   gravados; falta a tela.
+1. **Cloudflare Access** no `/admin`. O painel ainda usa um token compartilhado;
+   o Access deve identificar cada atendente e proteger o acesso antes do Worker.
+2. **Limitação de tentativas** nas consultas por CPF e na criação de pedidos,
+   preferencialmente com regras de Rate Limiting da Cloudflare.
+3. **Política para reservas em dinheiro**. Elas não expiram automaticamente;
+   a equipe precisa cancelar reservas abandonadas ou definir um prazo operacional.
+4. **Backup e restauração testados** antes da abertura das vendas, além de uma
+   tela dedicada para consultar os eventos de auditoria já registrados.
 
 Antes de qualquer deploy em produção, os passos estão na Fase 11 do plano de
 execução — principalmente: banco de produção separado do staging, secrets
@@ -197,7 +197,6 @@ de abrir as vendas.
 - **O `database_id` no `wrangler.jsonc` precisa ser um UUID bem formado**,
   mesmo em desenvolvimento: o runtime local deriva o caminho do arquivo a
   partir dele e falha com `SQLITE_CANTOPEN` se receber texto solto.
-- **Este build não coleta CPF** — a identificação é nome + telefone. É a
-  decisão D6 do plano, ainda em aberto. Se o CPF entrar depois, ele precisa
-  de HMAC com pepper, não de SHA-256 puro: existem só ~1,45 bilhão de CPFs
-  válidos, e a tabela completa de hashes se constrói em horas.
+- O CPF é normalizado e armazenado somente como **HMAC com pepper**. Ele não
+  fica em texto no D1. Trocar o `CPF_PEPPER` sem um plano de migração impede
+  que pedidos antigos sejam encontrados na consulta por CPF.

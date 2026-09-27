@@ -30,6 +30,19 @@ VALUES
   ('var_gg',  8, 0, datetime('now')),
   ('var_xg',  1, 0, datetime('now'));
 
+-- O saldo inicial também precisa existir no razão de movimentos. Sem estas
+-- linhas o estoque disponível funciona, mas a conciliação histórica começa
+-- em zero e não consegue explicar o saldo físico. IDs fixos tornam a carga
+-- segura para ser executada novamente.
+INSERT OR IGNORE INTO estoque_movimentos
+  (id, produto_variacao_id, tipo, quantidade, motivo, admin_email, created_at)
+VALUES
+  ('mov_prod_seed_p',  'var_p',  'ENTRADA', 12, 'Carga inicial de produção', 'seed@production', datetime('now')),
+  ('mov_prod_seed_m',  'var_m',  'ENTRADA', 30, 'Carga inicial de produção', 'seed@production', datetime('now')),
+  ('mov_prod_seed_g',  'var_g',  'ENTRADA', 25, 'Carga inicial de produção', 'seed@production', datetime('now')),
+  ('mov_prod_seed_gg', 'var_gg', 'ENTRADA',  8, 'Carga inicial de produção', 'seed@production', datetime('now')),
+  ('mov_prod_seed_xg', 'var_xg', 'ENTRADA',  1, 'Carga inicial de produção', 'seed@production', datetime('now'));
+
 INSERT OR IGNORE INTO produto_imagens
   (id, produto_id, r2_key, alt_text, ordem, created_at, content_type, bytes)
 VALUES

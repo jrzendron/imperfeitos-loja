@@ -48,8 +48,11 @@ async function acharOuCriarCliente(
   const ts = agora();
   const cpfHash = await hmacSha256(env.CPF_PEPPER, cliente.cpf);
   const existente = await db
-    .prepare(`SELECT id FROM clientes WHERE cpf_hash = ?1 OR telefone = ?2 ORDER BY cpf_hash = ?1 DESC LIMIT 1`)
-    .bind(cpfHash, cliente.telefone)
+    // O CPF é a identidade usada para consultar pedidos. Procurar também
+    // pelo telefone permitiria que outra pessoa reutilizasse um número e
+    // acabasse ligada ao histórico do dono anterior.
+    .prepare(`SELECT id FROM clientes WHERE cpf_hash = ?1 LIMIT 1`)
+    .bind(cpfHash)
     .first<{ id: string }>();
 
   if (existente) {
@@ -63,12 +66,20 @@ async function acharOuCriarCliente(
   const id = novoId("cli");
   await db
     .prepare(
-      `INSERT INTO clientes (id, nome, telefone, email, cpf_hash, ativo, created_at, updated_at)
+      `INSERT OR IGNORE INTO clientes (id, nome, telefone, email, cpf_hash, ativo, created_at, updated_at)
        VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?6)`,
     )
     .bind(id, cliente.nome, cliente.telefone, cliente.email || null, cpfHash, ts)
     .run();
-  return id;
+
+  // Duas finalizações simultâneas com o mesmo CPF podem chegar aqui antes
+  // de qualquer uma enxergar a outra. O índice único escolhe uma linha;
+  // ambas continuam usando a identidade vencedora em vez de uma falhar.
+  const criado = await db.prepare(`SELECT id FROM clientes WHERE cpf_hash = ?1 LIMIT 1`)
+    .bind(cpfHash)
+    .first<{ id: string }>();
+  if (!criado) throw new Error("Não foi possível identificar o cliente pelo CPF.");
+  return criado.id;
 }
 
 /**
@@ -325,17 +336,27 @@ export async function escolherPagamentoDinheiro(db: D1Database, acessoToken: str
     if (existente.provider === "MANUAL" && existente.external_id === "DINHEIRO" && existente.status === "PENDING") {
       return { provider: "MANUAL" as const, status: "PENDING" as const, pix_copia_cola: null, expires_at: null };
     }
-    throw erro(409, "PAGAMENTO_EXISTENTE", "Este pedido já possui outra forma de pagamento.");
+    if (!["REJECTED", "CANCELLED"].includes(existente.status)) {
+      throw erro(409, "PAGAMENTO_EXISTENTE", "Este pedido já possui outra forma de pagamento.");
+    }
   }
 
   const ts = agora();
   await db.batch([
-    db.prepare(
-      `INSERT INTO pagamentos
-         (id, pedido_id, provider, external_id, idempotency_key, status, valor_centavos,
-          expires_at, created_at, updated_at)
-       VALUES (?1, ?2, 'MANUAL', 'DINHEIRO', ?3, 'PENDING', ?4, NULL, ?5, ?5)`,
-    ).bind(novoId("pag"), pedido.id, `cash-${pedido.id}`, pedido.valor_total_centavos, ts),
+    existente
+      ? db.prepare(
+          `UPDATE pagamentos
+              SET provider = 'MANUAL', external_id = 'DINHEIRO', idempotency_key = ?1,
+                  status = 'PENDING', valor_centavos = ?2, pix_copia_cola = NULL,
+                  expires_at = NULL, paid_at = NULL, updated_at = ?3
+            WHERE pedido_id = ?4 AND status IN ('REJECTED','CANCELLED')`,
+        ).bind(`cash-${pedido.id}`, pedido.valor_total_centavos, ts, pedido.id)
+      : db.prepare(
+          `INSERT INTO pagamentos
+             (id, pedido_id, provider, external_id, idempotency_key, status, valor_centavos,
+              expires_at, created_at, updated_at)
+           VALUES (?1, ?2, 'MANUAL', 'DINHEIRO', ?3, 'PENDING', ?4, NULL, ?5, ?5)`,
+        ).bind(novoId("pag"), pedido.id, `cash-${pedido.id}`, pedido.valor_total_centavos, ts),
     db.prepare(
       `UPDATE pedidos SET expires_at = NULL, updated_at = ?1
         WHERE id = ?2 AND status = 'AGUARDANDO_PAGAMENTO'`,

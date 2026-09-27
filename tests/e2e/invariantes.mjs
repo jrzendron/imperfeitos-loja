@@ -37,7 +37,26 @@ async function get(caminho, admin = false) {
   return { status: r.status, dados: await r.json().catch(() => ({})) };
 }
 
-const cliente = (n) => ({ nome: `Teste ${n} da Silva`, telefone: "47999880000" });
+let sequenciaCliente = 0;
+const gerarCpf = (n) => {
+  const base = String(100_000_000 + n).slice(-9);
+  const digito = (parcial) => {
+    let soma = 0;
+    for (let i = 0; i < parcial.length; i++) soma += Number(parcial[i]) * (parcial.length + 1 - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+  const primeiro = digito(base);
+  return `${base}${primeiro}${digito(`${base}${primeiro}`)}`;
+};
+const cliente = (n) => {
+  const id = ++sequenciaCliente;
+  return {
+    nome: `Teste ${n} da Silva`,
+    telefone: String(47990000000 + id),
+    cpf: gerarCpf(id),
+  };
+};
 const disp = async (id) =>
   (await get("/api/produtos")).dados.produtos[0].variacoes.find((v) => v.id === id).disponivel;
 const sql = (q) =>
@@ -174,9 +193,29 @@ titulo("7 · Isolamento e autorização");
     (await fetch(BASE + "/api/admin/pedidos", { headers: { Authorization: "Bearer errado" } })).status === 401,
   );
 
-  const a = await post("/api/pedidos", { cliente: { nome: "Cliente A Souza", telefone: "47955440000" }, itens: [{ produto_variacao_id: "var_p", quantidade: 1 }] });
+  const clienteA = cliente("isolamento A");
+  const a = await post("/api/pedidos", { cliente: clienteA, itens: [{ produto_variacao_id: "var_p", quantidade: 1 }] });
   ok("o número público não abre o pedido", (await get(`/api/pedidos/${a.dados.numero}`)).status === 404);
+
+  const clienteB = cliente("isolamento B");
+  clienteB.telefone = clienteA.telefone;
+  const b = await post("/api/pedidos", { cliente: clienteB, itens: [{ produto_variacao_id: "var_p", quantidade: 1 }] });
+  const pedidosB = await post("/api/pedidos/consultar-cpf", { cpf: clienteB.cpf });
+  ok(
+    "reutilizar um telefone não mistura históricos de CPFs diferentes",
+    pedidosB.status === 200 && pedidosB.dados.pedidos.every((p) => p.numero !== a.dados.numero),
+  );
+
+  const listaB = await get("/api/admin/pedidos?limite=100&status=AGUARDANDO_PAGAMENTO", true);
+  const pedidoB = listaB.dados.pedidos.find((p) => p.numero === b.dados.numero);
+  sql(`INSERT INTO pagamentos (id,pedido_id,provider,idempotency_key,status,valor_centavos,created_at,updated_at) VALUES ('pag_troca','${pedidoB.id}','MERCADO_PAGO','card-recusado','REJECTED',4500,'2026-01-01','2026-01-01')`);
+  const dinheiroDepoisDeRecusa = await post(`/api/pedidos/${b.dados.acesso_token}/dinheiro`, null);
+  ok(
+    "cartão recusado permite trocar para dinheiro",
+    dinheiroDepoisDeRecusa.status === 200 && dinheiroDepoisDeRecusa.dados.pagamento?.provider === "MANUAL",
+  );
   await post(`/api/pedidos/${a.dados.acesso_token}/cancelar`, null);
+  await post(`/api/pedidos/${b.dados.acesso_token}/cancelar`, null);
 }
 
 titulo("8 · Pedido expirado libera estoque");
