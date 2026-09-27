@@ -1,18 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-marca-50:  #EFF7F5;
-  --color-marca-100: #DCEDE8;
-  --color-marca-200: #B6DBD1;
-  --color-marca-500: #14876F;
-  --color-marca-600: #0B6E5F;
-  --color-marca-700: #08574B;
-  --color-marca-900: #0A2E29;
+  --color-marca-50:  #F2F6FC;
+  --color-marca-100: #E1EAF7;
+  --color-marca-200: #B9CDE9;
+  --color-marca-500: #285EA7;
+  --color-marca-600: #1C4B8C;
+  --color-marca-700: #12386E;
+  --color-marca-900: #071F3D;
 
-  --color-tinta:  #10201E;
-  --color-suave:  #5A6C69;
-  --color-linha:  #DCE4E2;
-  --color-fundo:  #F4F7F6;
+  --color-ouro-100: #FAEDC9;
+  --color-ouro-400: #E9BD59;
+  --color-ouro-500: #D8A83F;
+  --color-ouro-700: #8B6419;
+
+  --color-tinta:  #0B1D36;
+  --color-suave:  #607086;
+  --color-linha:  #DDE4EE;
+  --color-fundo:  #F6F3EC;
 
   --color-alerta:   #9A5B06;
   --color-perigo:   #96271F;
@@ -30,8 +35,8 @@
   body {
     min-height: 100dvh;
     background:
-      radial-gradient(circle at 10% 5%, rgb(220 237 232 / 0.6), transparent 28rem),
-      radial-gradient(circle at 90% 80%, rgb(247 217 154 / 0.18), transparent 30rem),
+      radial-gradient(circle at 8% 4%, rgb(225 234 247 / 0.85), transparent 30rem),
+      radial-gradient(circle at 92% 78%, rgb(233 189 89 / 0.18), transparent 32rem),
       var(--color-fundo);
   }
   /* Alvos de toque grandes: o atendente usa isso em pé, com fila. */
@@ -46,16 +51,29 @@
 
 .hero-loja {
   background-image:
-    linear-gradient(90deg, rgb(255 252 245 / 0.98) 0%, rgb(255 252 245 / 0.91) 43%, rgb(255 252 245 / 0.12) 75%),
+    linear-gradient(90deg, rgb(7 31 61 / 1) 0%, rgb(10 41 77 / 0.97) 43%, rgb(7 31 61 / 0.16) 78%),
     url("/assets/hero-igreja.webp");
-  background-position: center;
+  background-position: center, 72% center;
   background-size: cover;
+}
+
+.faixa-arco {
+  background: linear-gradient(90deg, #ef3e42 0 20%, #f2c541 20% 40%, #34a85a 40% 60%, #26a9df 60% 80%, #2852a0 80% 100%);
+}
+
+.cabecalho-loja::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ef3e42, #f2c541, #34a85a, #26a9df, #2852a0);
+  opacity: 0.9;
 }
 
 @media (max-width: 640px) {
   .hero-loja {
     background-image:
-      linear-gradient(90deg, rgb(255 252 245 / 0.97), rgb(255 252 245 / 0.78)),
+      linear-gradient(90deg, rgb(7 31 61 / 0.98), rgb(12 48 88 / 0.88)),
       url("/assets/hero-igreja.webp");
     background-position: 62% center;
   }
@@ -72,6 +90,11 @@
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3
            text-base font-semibold transition disabled:opacity-50
            disabled:cursor-not-allowed;
+  }
+  .btn-destaque {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ouro-400 px-6 py-3
+           text-base font-bold text-marca-900 shadow-lg shadow-marca-900/20 transition
+           hover:bg-ouro-500 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primario {
     @apply bg-marca-600 text-white hover:bg-marca-700 active:bg-marca-900;
@@ -90,7 +113,7 @@
     @apply mb-1.5 block text-sm font-semibold text-tinta;
   }
   .cartao {
-    @apply rounded-xl border border-linha bg-white;
+    @apply rounded-2xl border border-linha bg-white shadow-[0_10px_35px_rgba(7,31,61,0.06)];
   }
   .etiqueta {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
