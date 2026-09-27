@@ -75,7 +75,7 @@ export interface PedidoPublico {
 
 export interface PedidoConsultadoCpf {
   numero: string;
-  codigo_retirada: string;
+  codigo_retirada: string | null;
   status: StatusPedido;
   valor_total_centavos: number;
   created_at: string;

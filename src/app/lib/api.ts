@@ -73,7 +73,7 @@ export const api = {
   produto: (slug: string) => pedir<{ produto: ProdutoPublico }>(`/produtos/${slug}`),
 
   criarPedido: (corpo: unknown) =>
-    pedir<{ numero: string; acesso_token: string; codigo_retirada: string }>("/pedidos", {
+    pedir<{ numero: string; acesso_token: string }>("/pedidos", {
       method: "POST",
       body: JSON.stringify(corpo),
     }),

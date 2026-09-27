@@ -29,7 +29,7 @@ export function MeusPedidos() {
     <Pagina>
       <div className="mx-auto max-w-2xl">
         <h1 className="text-2xl font-bold">Meus pedidos</h1>
-        <p className="mt-1 text-suave">Informe o CPF usado na compra para recuperar os códigos de retirada.</p>
+        <p className="mt-1 text-suave">Informe o CPF usado na compra para consultar seus pedidos.</p>
 
         <form onSubmit={consultar} className="cartao mt-5 p-5">
           <label className="rotulo" htmlFor="cpf-consulta">CPF</label>
@@ -50,16 +50,24 @@ export function MeusPedidos() {
                 <Etiqueta status={pedido.status} />
               </div>
               <div className="p-5">
-                <div className="grid items-center gap-5 sm:grid-cols-[1fr_auto]">
+                <div className={`grid items-center gap-5 ${pedido.codigo_retirada ? "sm:grid-cols-[1fr_auto]" : ""}`}>
                   <div>
-                    <p className="text-sm text-suave">Código de retirada</p>
-                    <p className="mt-1 text-2xl font-extrabold tracking-widest text-marca-800">{pedido.codigo_retirada}</p>
+                    {pedido.codigo_retirada ? (
+                      <>
+                        <p className="text-sm text-suave">Código de retirada</p>
+                        <p className="mt-1 text-2xl font-extrabold tracking-widest text-marca-800">{pedido.codigo_retirada}</p>
+                      </>
+                    ) : (
+                      <Aviso tipo="alerta" titulo="Código ainda indisponível">
+                        O código e o QR de retirada aparecem após a confirmação do pagamento.
+                      </Aviso>
+                    )}
                     <p className="mt-3 text-sm font-semibold">Total: {formatarBRL(pedido.valor_total_centavos)}</p>
                     <ul className="mt-3 space-y-1 text-sm text-suave">
                       {pedido.itens.map((item, i) => <li key={i}>{item.quantidade}× {item.produto_nome_snapshot} — {item.variacao_nome_snapshot}</li>)}
                     </ul>
                   </div>
-                  <QrCode valor={`${window.location.origin}/retirada/${pedido.codigo_retirada}`} tamanho={150} />
+                  {pedido.codigo_retirada && <QrCode valor={`${window.location.origin}/retirada/${pedido.codigo_retirada}`} tamanho={150} />}
                 </div>
               </div>
             </article>

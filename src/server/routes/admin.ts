@@ -95,7 +95,9 @@ adminRouter.get("/pedidos", async (c) => {
   valores.push(limite, (pagina - 1) * limite);
 
   const { results } = await c.env.DB.prepare(
-    `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos, p.created_at, p.expires_at,
+    `SELECT p.id, p.numero,
+            CASE WHEN pg.status = 'APPROVED' THEN p.codigo_retirada ELSE NULL END AS codigo_retirada,
+            p.status, p.valor_total_centavos, p.created_at, p.expires_at,
             c.nome AS cliente_nome, c.telefone AS cliente_telefone,
             pg.status AS pagamento_status, pg.provider AS pagamento_provider, pg.paid_at,
             r.data_hora AS retirado_em, r.admin_email AS retirado_por,

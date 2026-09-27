@@ -22,13 +22,15 @@ export function Pedido() {
       setPedido(pedido);
       if (pedido.codigo_retirada) {
         setQr(`${window.location.origin}/retirada/${pedido.codigo_retirada}`);
-      } else if (pedido.status !== "AGUARDANDO_PAGAMENTO") {
+      } else if (["PAGO", "PRONTO_PARA_RETIRADA", "RETIRADO"].includes(pedido.status)) {
         try {
           const r = await api.qrRetirada(token);
           setQr(`${window.location.origin}/retirada/${r.token}`);
         } catch {
           setQr(null);
         }
+      } else {
+        setQr(null);
       }
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar o pedido.");
@@ -100,7 +102,7 @@ export function Pedido() {
         <div className="mt-5">
           <Aviso tipo="alerta" titulo="Aguardando pagamento">
             Escolha Pix ou cartão e pague até o horário indicado. A confirmação ocorre
-            automaticamente. Seu código já foi criado, mas a retirada só será liberada após o pagamento.
+            automaticamente. O código e o QR de retirada aparecem depois que o pagamento for aprovado.
             {pedido.expires_at && (
               <> As peças ficam reservadas até <strong>{formatarDataHora(pedido.expires_at)}</strong>.</>
             )}
@@ -108,17 +110,25 @@ export function Pedido() {
         </div>
       )}
 
-      {podeEscolher && !metodo && (
+      {podeEscolher && (
         <section className="cartao mt-5 p-5">
           <h2 className="text-center font-bold">Como você quer pagar?</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <button type="button" className="btn-primario" onClick={() => { setMetodo("pix"); void gerarPix(); }}>
+            <button type="button" className={metodo === "pix" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("pix")}>
               Pix
             </button>
-            <button type="button" className="btn-secundario" onClick={() => setMetodo("cartao")}>
+            <button type="button" className={metodo === "cartao" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("cartao")}>
               Cartão de crédito
             </button>
           </div>
+          {metodo === "pix" && (
+            <div className="mt-4 rounded-lg border border-marca-100 bg-marca-50 p-4 text-center">
+              <p className="text-sm text-suave">Vamos gerar um QR Code Pix para este pedido.</p>
+              <button type="button" className="btn-primario mt-3 w-full" disabled={criandoPix} onClick={() => void gerarPix()}>
+                {criandoPix ? "Gerando Pix…" : "Continuar com Pix"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -130,7 +140,7 @@ export function Pedido() {
         />
       )}
 
-      {aguardando && pedido.pagamento?.status === "PENDING" && !pedido.pagamento.pix_copia_cola && metodo !== "cartao" && (
+      {aguardando && pedido.pagamento?.status === "PENDING" && !pedido.pagamento.pix_copia_cola && (
         <div className="mt-5">
           <Aviso tipo="alerta" titulo="Pagamento em processamento">
             Aguarde a confirmação do cartão. Esta página será atualizada automaticamente.
@@ -166,11 +176,7 @@ export function Pedido() {
         </section>
       )}
 
-      {aguardando && criandoPix && (
-        <div className="mt-5"><Carregando /></div>
-      )}
-
-      {aguardando && erroPix && (
+      {aguardando && erroPix && metodo === "pix" && (
         <div className="mt-5">
           <Aviso tipo="erro" titulo="Não foi possível gerar o Pix">{erroPix}</Aviso>
           <button type="button" className="btn-secundario mt-3" onClick={() => void gerarPix()}>

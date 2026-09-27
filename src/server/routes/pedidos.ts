@@ -16,8 +16,8 @@ export const pedidosRouter = new Hono<{ Bindings: Env }>();
  */
 pedidosRouter.post("/", async (c) => {
   const corpo = criarPedidoSchema.parse(await c.req.json());
-  const resultado = await criarPedido(c.env.DB, c.env, corpo);
-  return c.json(resultado, 201);
+  const { numero, acesso_token } = await criarPedido(c.env.DB, c.env, corpo);
+  return c.json({ numero, acesso_token }, 201);
 });
 
 pedidosRouter.post("/consultar-cpf", async (c) => {
@@ -31,15 +31,18 @@ pedidosRouter.post("/consultar-cpf", async (c) => {
   if (!cliente) return c.json({ pedidos: [] as PedidoConsultadoCpf[] });
 
   const { results: linhas } = await c.env.DB.prepare(
-    `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos,
+    `SELECT p.id, p.numero,
+            CASE WHEN pg.status = 'APPROVED' THEN p.codigo_retirada ELSE NULL END AS codigo_retirada,
+            p.status, p.valor_total_centavos,
             p.created_at, r.data_hora AS retirado_em
        FROM pedidos p
+       LEFT JOIN pagamentos pg ON pg.pedido_id = p.id
        LEFT JOIN retiradas r ON r.pedido_id = p.id
       WHERE p.cliente_id = ?1 AND p.codigo_retirada IS NOT NULL
       ORDER BY p.created_at DESC
       LIMIT 30`,
   ).bind(cliente.id).all<{
-    id: string; numero: string; codigo_retirada: string; status: StatusPedido;
+    id: string; numero: string; codigo_retirada: string | null; status: StatusPedido;
     valor_total_centavos: number; created_at: string; retirado_em: string | null;
   }>();
 
@@ -105,7 +108,7 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
 
   return {
     numero: pedido.numero,
-    codigo_retirada: pedido.codigo_retirada,
+    codigo_retirada: pagamento?.status === "APPROVED" ? pedido.codigo_retirada : null,
     status: pedido.status,
     valor_total_centavos: pedido.valor_total_centavos,
     expires_at: pedido.expires_at,
@@ -147,18 +150,19 @@ pedidosRouter.get("/:token/retirada", async (c) => {
   const hash = await sha256(c.req.param("token").trim());
 
   const linha = await c.env.DB.prepare(
-    `SELECT p.id, p.status, p.numero, t.nonce
+    `SELECT p.id, p.status, p.numero, t.nonce, pg.status AS pagamento_status
        FROM pedidos p
        LEFT JOIN retirada_tokens t ON t.pedido_id = p.id AND t.revoked_at IS NULL
+       LEFT JOIN pagamentos pg ON pg.pedido_id = p.id
       WHERE p.acesso_token_hash = ?1
       LIMIT 1`,
   )
     .bind(hash)
-    .first<{ id: string; status: StatusPedido; numero: string; nonce: string | null }>();
+    .first<{ id: string; status: StatusPedido; numero: string; nonce: string | null; pagamento_status: string | null }>();
 
   if (!linha) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
 
-  if (linha.status === "AGUARDANDO_PAGAMENTO") {
+  if (linha.pagamento_status !== "APPROVED") {
     throw erro(409, "NAO_PAGO", "O QR de retirada aparece assim que o pagamento for confirmado.");
   }
   if (!linha.nonce) {

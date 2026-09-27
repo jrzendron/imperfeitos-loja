@@ -290,7 +290,7 @@ function AbaPedidos() {
                       <Linha rotulo="Nome" valor={detalhe.pedido.cliente_nome} />
                       <Linha rotulo="Telefone" valor={formatarTelefone(detalhe.pedido.cliente_telefone)} />
                       <Linha rotulo="E-mail" valor={detalhe.pedido.cliente_email || "Não informado"} />
-                      <Linha rotulo="Código" valor={detalhe.pedido.codigo_retirada || "Pedido antigo"} />
+                      <Linha rotulo="Código" valor={detalhe.pedido.pagamento_status === "APPROVED" ? (detalhe.pedido.codigo_retirada || "Pedido antigo") : "Disponível após o pagamento"} />
                     </dl>
                   </div>
                   <div>

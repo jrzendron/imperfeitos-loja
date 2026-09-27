@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { STATUS_LABEL, type StatusPedido } from "../../shared/types";
 import { useCarrinho } from "../lib/carrinho";
 
@@ -49,10 +49,24 @@ export function Cabecalho({ admin = false }: { admin?: boolean }) {
 }
 
 export function Pagina({ children, admin }: { children: ReactNode; admin?: boolean }) {
+  const caminho = useRouterState({ select: (estado) => estado.location.pathname });
+  const destinoVoltar = caminho === "/checkout" ? "/carrinho" : "/";
+
   return (
     <div className="min-h-dvh">
       <Cabecalho admin={admin} />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {caminho !== "/" && (
+          <button
+            type="button"
+            className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-bold text-marca-700 transition hover:bg-marca-50"
+            onClick={() => window.location.assign(destinoVoltar)}
+          >
+            <span aria-hidden="true">←</span> Voltar
+          </button>
+        )}
+        {children}
+      </main>
     </div>
   );
 }
