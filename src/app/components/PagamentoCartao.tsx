@@ -96,7 +96,10 @@ export function PagamentoCartao({
                 setProcessando(false);
               }
             },
-            onError: (e: unknown) => console.error("Card Payment Brick", e),
+            onError: (e: unknown) => {
+              console.error("Card Payment Brick", e);
+              if (ativo) setErro("O formulário do Mercado Pago não conseguiu iniciar. Recarregue a página e tente novamente.");
+            },
           },
         });
         if (ativo) controller.current = brick;
