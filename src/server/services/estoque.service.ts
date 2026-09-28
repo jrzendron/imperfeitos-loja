@@ -15,6 +15,7 @@ export async function ajustarEstoque(
 ): Promise<{ quantidade_fisica: number; quantidade_reservada: number }> {
   const ts = agora();
   const tipo = entrada.delta > 0 ? "ENTRADA" : "AJUSTE";
+  const motivo = entrada.motivo || "Ajuste manual no painel";
 
   try {
     await db.batch([
@@ -30,7 +31,7 @@ export async function ajustarEstoque(
              (id, produto_variacao_id, tipo, quantidade, motivo, admin_email, created_at)
            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
         )
-        .bind(novoId("mov"), entrada.produto_variacao_id, tipo, entrada.delta, entrada.motivo, adminEmail, ts),
+        .bind(novoId("mov"), entrada.produto_variacao_id, tipo, entrada.delta, motivo, adminEmail, ts),
     ]);
   } catch (e) {
     if (violouCheck(e)) {
@@ -58,7 +59,7 @@ export async function ajustarEstoque(
     action: "ESTOQUE_AJUSTADO",
     entity_type: "produto_variacao",
     entity_id: entrada.produto_variacao_id,
-    metadata: { delta: entrada.delta, motivo: entrada.motivo, resultado: atual },
+    metadata: { delta: entrada.delta, motivo, resultado: atual },
   });
 
   return atual;

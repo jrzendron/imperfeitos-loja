@@ -3,7 +3,7 @@
 ## Resultado
 
 O fluxo principal está operacional: catálogo, seleção de tamanhos, carrinho,
-checkout, reserva de estoque, Pix, cartão, dinheiro, consulta por CPF, código de
+checkout, reserva de estoque, Pix, cartão, consulta por CPF, código de
 retirada, scanner, confirmação de pagamento, entrega e administração.
 
 ## Evidências executadas
@@ -23,14 +23,13 @@ retirada, scanner, confirmação de pagamento, entrega e administração.
 1. A identificação de cliente aceitava CPF ou telefone. Reutilizar um telefone
    podia misturar históricos de CPFs diferentes. A identidade agora usa apenas o
    HMAC do CPF, com tratamento para finalizações simultâneas.
-2. Depois de cartão recusado, a interface permitia escolher outra forma, mas o
-   servidor bloqueava Pix e dinheiro. Registros rejeitados ou cancelados agora
-   podem ser reutilizados com segurança para a nova tentativa.
+2. Depois de cartão recusado, registros rejeitados ou cancelados agora podem
+   ser reutilizados com segurança para uma nova tentativa de pagamento.
 3. A carga inicial do estoque de produção não possuía movimentos de entrada. Os
    saldos estavam corretos, mas o histórico não os explicava. A carga foi
    registrada de forma idempotente e a conciliação passou.
-4. A tela cheia de um pedido já retirado podia usar o título de pedido em
-   dinheiro. O texto agora acompanha o status real.
+4. A tela cheia de um pedido já retirado usava um título incorreto. O texto
+   agora acompanha o status real.
 5. A bateria E2E ainda criava pedidos sem CPF e não cobria troca de pagamento nem
    isolamento entre CPFs com o mesmo telefone. Os testes foram atualizados.
 
@@ -44,8 +43,6 @@ retirada, scanner, confirmação de pagamento, entrega e administração.
 
 ### Prioridade média
 
-- Definir prazo ou rotina diária para cancelar reservas em dinheiro abandonadas;
-  hoje elas permanecem reservadas até uma ação da equipe.
 - Executar um roteiro periódico no ambiente de testes do Mercado Pago com Pix,
   cartão aprovado, cartão recusado e webhook. A auditoria automática não efetuou
   uma cobrança externa real.

@@ -244,7 +244,7 @@ function AbaPedidos() {
               <InfoPedido rotulo="Itens" valor={p.itens_resumo || `${p.itens} item(ns)`} />
               <InfoPedido
                 rotulo="Pagamento"
-                valor={p.pagamento_status === "APPROVED" ? "Pago" : p.pagamento_provider === "MANUAL" && p.pagamento_status === "PENDING" ? "Dinheiro na retirada" : p.pagamento_status === "PENDING" ? "Pendente" : "Não confirmado"}
+                valor={p.pagamento_status === "APPROVED" ? "Pago" : p.pagamento_status === "PENDING" ? "Pendente" : "Não confirmado"}
                 complemento={p.paid_at ? formatarDataHora(p.paid_at) : undefined}
               />
               <InfoPedido
@@ -290,7 +290,7 @@ function AbaPedidos() {
                       <Linha rotulo="Nome" valor={detalhe.pedido.cliente_nome} />
                       <Linha rotulo="Telefone" valor={formatarTelefone(detalhe.pedido.cliente_telefone)} />
                       <Linha rotulo="E-mail" valor={detalhe.pedido.cliente_email || "Não informado"} />
-                      <Linha rotulo="Código" valor={detalhe.pedido.pagamento_status === "APPROVED" || (detalhe.pedido.status === "AGUARDANDO_PAGAMENTO" && detalhe.pedido.pagamento_provider === "MANUAL" && detalhe.pedido.pagamento_status === "PENDING") ? (detalhe.pedido.codigo_retirada || "Pedido antigo") : "Indisponível"} />
+                      <Linha rotulo="Código" valor={detalhe.pedido.pagamento_status === "APPROVED" ? (detalhe.pedido.codigo_retirada || "Pedido antigo") : "Indisponível"} />
                     </dl>
                   </div>
                   <div>
@@ -370,8 +370,7 @@ function AbaEstoque() {
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
   const [faturamento, setFaturamento] = useState(0);
   const [editando, setEditando] = useState<string | null>(null);
-  const [delta, setDelta] = useState("");
-  const [motivo, setMotivo] = useState("");
+  const [novaQuantidade, setNovaQuantidade] = useState(0);
   const [aviso, setAviso] = useState<{ tipo: "erro" | "sucesso"; texto: string } | null>(null);
   const [busca, setBusca] = useState("");
   const [criandoTamanho, setCriandoTamanho] = useState(false);
@@ -395,17 +394,19 @@ function AbaEstoque() {
     void carregar();
   }, [carregar]);
 
-  async function salvar(id: string) {
+  async function salvar(linha: LinhaEstoque) {
     setAviso(null);
+    const delta = novaQuantidade - linha.quantidade_fisica;
+    if (delta === 0) {
+      setEditando(null);
+      return;
+    }
     try {
       await api.admin.ajustarEstoque({
-        produto_variacao_id: id,
-        delta: Number(delta),
-        motivo: motivo.trim(),
+        produto_variacao_id: linha.id,
+        delta,
       });
       setEditando(null);
-      setDelta("");
-      setMotivo("");
       setAviso({ tipo: "sucesso", texto: "Estoque ajustado e movimento registrado." });
       await carregar();
     } catch (e) {
@@ -553,25 +554,15 @@ function AbaEstoque() {
             </div>
 
             {editando === l.id ? (
-              <div className="mt-3 grid gap-2 sm:grid-cols-[7rem_1fr_auto_auto]">
-                <input
-                  className="campo"
-                  type="number"
-                  placeholder="+10 / -3"
-                  value={delta}
-                  onChange={(e) => setDelta(e.target.value)}
-                  autoFocus
-                />
-                <input
-                  className="campo min-w-40 flex-1"
-                  placeholder="Motivo (obrigatório)"
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-sm font-semibold text-suave">Quantidade física</span>
+                <button type="button" className="grid h-11 w-11 place-items-center rounded-lg border border-linha bg-white text-xl font-bold disabled:opacity-30" disabled={novaQuantidade <= l.quantidade_reservada} onClick={() => setNovaQuantidade((q) => Math.max(l.quantidade_reservada, q - 1))}>−</button>
+                <input className="campo h-11 w-20 px-2 text-center text-lg font-bold" type="number" min={l.quantidade_reservada} step="1" value={novaQuantidade} onChange={(e) => setNovaQuantidade(Math.max(l.quantidade_reservada, Number(e.target.value) || 0))} aria-label="Nova quantidade física" />
+                <button type="button" className="grid h-11 w-11 place-items-center rounded-lg border border-linha bg-white text-xl font-bold" onClick={() => setNovaQuantidade((q) => q + 1)}>+</button>
                 <button
                   className="btn-primario !py-2 !text-sm"
-                  disabled={!delta || motivo.trim().length < 3}
-                  onClick={() => salvar(l.id)}
+                  disabled={novaQuantidade === l.quantidade_fisica}
+                  onClick={() => salvar(l)}
                 >
                   Salvar
                 </button>
@@ -584,8 +575,7 @@ function AbaEstoque() {
                 className="btn-secundario mt-3 !py-2 !text-sm"
                 onClick={() => {
                   setEditando(l.id);
-                  setDelta("");
-                  setMotivo("");
+                  setNovaQuantidade(l.quantidade_fisica);
                 }}
               >
                 Ajustar estoque
@@ -607,10 +597,6 @@ function AbaRetirada() {
   const [consulta, setConsulta] = useState<any>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
-  const [editandoPedido, setEditandoPedido] = useState(false);
-  const [variacoesPedido, setVariacoesPedido] = useState<any[]>([]);
-  const [quantidadesPedido, setQuantidadesPedido] = useState<Record<string, number>>({});
-  const [salvandoPedido, setSalvandoPedido] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -632,7 +618,6 @@ function AbaRetirada() {
     setLendo(false);
     setErro(null);
     setConsulta(null);
-    setEditandoPedido(false);
     setTokenAtual(token);
     try {
       const r = await api.admin.consultarRetirada(token);
@@ -654,70 +639,6 @@ function AbaRetirada() {
       // primeiro. Recarregamos para a tela mostrar "PEDIDO JÁ RETIRADO".
       setErro(e instanceof ErroApi ? e.message : "Falha ao confirmar.");
       await consultar(tokenAtual);
-    } finally {
-      setConfirmando(false);
-    }
-  }
-
-  async function confirmarDinheiro() {
-    if (!consulta) return;
-    setConfirmando(true);
-    setErro(null);
-    try {
-      await api.admin.marcarPago(consulta.pedido_id);
-      await consultar(tokenAtual);
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Falha ao confirmar o pagamento.");
-    } finally {
-      setConfirmando(false);
-    }
-  }
-
-  async function abrirEdicaoPedido() {
-    if (!consulta) return;
-    setErro(null);
-    try {
-      const catalogo = await api.catalogo();
-      const variacoes = catalogo.produtos.flatMap((produto) =>
-        produto.variacoes.map((variacao) => ({ ...variacao, produto_nome: produto.nome })),
-      );
-      const atuais = Object.fromEntries(consulta.itens.map((item: any) => [item.produto_variacao_id, item.quantidade]));
-      setVariacoesPedido(variacoes);
-      setQuantidadesPedido(atuais);
-      setEditandoPedido(true);
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Falha ao consultar o estoque.");
-    }
-  }
-
-  async function salvarAlteracaoPedido() {
-    if (!consulta) return;
-    const itens = Object.entries(quantidadesPedido)
-      .filter(([, quantidade]) => quantidade > 0)
-      .map(([produto_variacao_id, quantidade]) => ({ produto_variacao_id, quantidade }));
-    if (!itens.length) return setErro("O pedido precisa ter ao menos uma peça.");
-    setSalvandoPedido(true);
-    setErro(null);
-    try {
-      await api.admin.alterarItens(consulta.pedido_id, itens);
-      setEditandoPedido(false);
-      await consultar(tokenAtual);
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Falha ao alterar o pedido.");
-    } finally {
-      setSalvandoPedido(false);
-    }
-  }
-
-  async function cancelarNaRetirada() {
-    if (!consulta || !window.confirm("Cancelar este pedido e devolver as peças ao estoque?")) return;
-    setConfirmando(true);
-    setErro(null);
-    try {
-      await api.admin.cancelar(consulta.pedido_id);
-      await consultar(tokenAtual);
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Falha ao cancelar o pedido.");
     } finally {
       setConfirmando(false);
     }
@@ -801,46 +722,6 @@ function AbaRetirada() {
             <Linha rotulo="Pagamento" valor={consulta.pago ? "PAGO" : "NÃO CONFIRMADO"} />
           </dl>
 
-          {consulta.pagamento_em_dinheiro && consulta.status === "AGUARDANDO_PAGAMENTO" && !editandoPedido && (
-            <div className="mt-5 rounded-xl border border-alerta/25 bg-alerta/5 p-4">
-              <h3 className="font-bold text-alerta">Pagamento em dinheiro</h3>
-              <p className="mt-1 text-sm text-suave">Confira o valor recebido antes de confirmar. Depois disso, o estoque será baixado como venda.</p>
-              <button className="btn-primario mt-4 min-h-14 w-full" disabled={confirmando} onClick={() => void confirmarDinheiro()}>
-                {confirmando ? "Confirmando…" : `Confirmar recebimento de ${formatarBRL(consulta.valor_total_centavos)}`}
-              </button>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button className="btn-secundario !px-3" disabled={confirmando} onClick={() => void abrirEdicaoPedido()}>Alterar pedido</button>
-                <button className="btn-perigo !px-3" disabled={confirmando} onClick={() => void cancelarNaRetirada()}>Cancelar pedido</button>
-              </div>
-            </div>
-          )}
-
-          {editandoPedido && (
-            <div className="mt-5 rounded-xl border border-marca-200 bg-marca-50 p-4">
-              <h3 className="font-bold">Alterar tamanhos e quantidades</h3>
-              <p className="mt-1 text-sm text-suave">O limite considera o estoque disponível mais as peças já reservadas neste pedido.</p>
-              <div className="mt-4 space-y-2">
-                {variacoesPedido.map((variacao) => {
-                  const atual = quantidadesPedido[variacao.id] ?? 0;
-                  const noPedido = consulta.itens.find((item: any) => item.produto_variacao_id === variacao.id)?.quantidade ?? 0;
-                  const maximo = variacao.disponivel + noPedido;
-                  return (
-                    <div key={variacao.id} className="flex items-center gap-3 rounded-lg border border-linha bg-white p-3">
-                      <div className="min-w-0 flex-1"><p className="font-bold">{variacao.nome}</p><p className="truncate text-xs text-suave">{variacao.produto_nome} · {maximo} possíveis</p></div>
-                      <button type="button" className="grid h-11 w-11 place-items-center rounded-lg border border-linha text-xl font-bold disabled:opacity-30" disabled={atual === 0} onClick={() => setQuantidadesPedido((q) => ({ ...q, [variacao.id]: Math.max(0, atual - 1) }))}>−</button>
-                      <strong className="w-7 text-center text-lg tabular-nums">{atual}</strong>
-                      <button type="button" className="grid h-11 w-11 place-items-center rounded-lg border border-linha text-xl font-bold disabled:opacity-30" disabled={atual >= maximo} onClick={() => setQuantidadesPedido((q) => ({ ...q, [variacao.id]: atual + 1 }))}>+</button>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button className="btn-primario !px-3" disabled={salvandoPedido} onClick={() => void salvarAlteracaoPedido()}>{salvandoPedido ? "Salvando…" : "Salvar alterações"}</button>
-                <button className="btn-secundario !px-3" disabled={salvandoPedido} onClick={() => setEditandoPedido(false)}>Voltar</button>
-              </div>
-            </div>
-          )}
-
           {consulta.retirado_em ? (
             <div className="mt-5">
               <Aviso tipo="sucesso" titulo="ENTREGUE">
@@ -857,7 +738,7 @@ function AbaRetirada() {
             >
               {confirmando ? "Confirmando…" : "Confirmar retirada"}
             </button>
-          ) : consulta.pagamento_em_dinheiro && consulta.status === "AGUARDANDO_PAGAMENTO" ? null : (
+          ) : (
             <div className="mt-5">
               <Aviso tipo="erro" titulo={consulta.impedimento ?? "Retirada bloqueada"}>
                 Não entregue a peça. Encaminhe o comprador para a equipe.
@@ -872,7 +753,6 @@ function AbaRetirada() {
               setManual("");
               setTokenAtual("");
               setErro(null);
-              setEditandoPedido(false);
             }}
           >
             Ler outro QR

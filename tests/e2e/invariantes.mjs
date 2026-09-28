@@ -206,14 +206,8 @@ titulo("7 · Isolamento e autorização");
     pedidosB.status === 200 && pedidosB.dados.pedidos.every((p) => p.numero !== a.dados.numero),
   );
 
-  const listaB = await get("/api/admin/pedidos?limite=100&status=AGUARDANDO_PAGAMENTO", true);
-  const pedidoB = listaB.dados.pedidos.find((p) => p.numero === b.dados.numero);
-  sql(`INSERT INTO pagamentos (id,pedido_id,provider,idempotency_key,status,valor_centavos,created_at,updated_at) VALUES ('pag_troca','${pedidoB.id}','MERCADO_PAGO','card-recusado','REJECTED',4500,'2026-01-01','2026-01-01')`);
-  const dinheiroDepoisDeRecusa = await post(`/api/pedidos/${b.dados.acesso_token}/dinheiro`, null);
-  ok(
-    "cartão recusado permite trocar para dinheiro",
-    dinheiroDepoisDeRecusa.status === 200 && dinheiroDepoisDeRecusa.dados.pagamento?.provider === "MANUAL",
-  );
+  const dinheiroRemovido = await post(`/api/pedidos/${b.dados.acesso_token}/dinheiro`, null);
+  ok("pagamento em dinheiro não está disponível", dinheiroRemovido.status === 404);
   await post(`/api/pedidos/${a.dados.acesso_token}/cancelar`, null);
   await post(`/api/pedidos/${b.dados.acesso_token}/cancelar`, null);
 }
@@ -268,13 +262,12 @@ titulo("9 · Corrida entre o cron e o pagamento");
 
 titulo("10 · Ajuste de estoque");
 {
-  ok(
-    "ajuste sem motivo é recusado",
-    (await post("/api/admin/estoque/ajuste", { produto_variacao_id: "var_p", delta: 5 }, true)).status === 400,
-  );
   const p = await disp("var_p");
-  await post("/api/admin/estoque/ajuste", { produto_variacao_id: "var_p", delta: 5, motivo: "Chegou lote novo" }, true);
-  ok("entrada aplicada", (await disp("var_p")) === p + 5);
+  const ajuste = await post("/api/admin/estoque/ajuste", { produto_variacao_id: "var_p", delta: 5 }, true);
+  ok(
+    "ajuste simplificado não exige motivo",
+    ajuste.status === 200 && (await disp("var_p")) === p + 5,
+  );
   ok(
     "baixa impossível é recusada pela CHECK",
     (await post("/api/admin/estoque/ajuste", { produto_variacao_id: "var_p", delta: -9999, motivo: "Limite" }, true)).status === 409,

@@ -44,8 +44,8 @@ Abre em **http://localhost:5173**.
 
 1. Escolha os tamanhos, adicione ao carrinho e finalize com nome, telefone, CPF e e-mail.
 2. Você cai na página do pedido, com status **Aguardando pagamento**.
-3. Escolha Pix, cartão ou pagamento em dinheiro na retirada. Pix e cartão são
-   confirmados pelo Mercado Pago; dinheiro é confirmado pela equipe no painel.
+3. Escolha Pix ou cartão. Os pagamentos são confirmados automaticamente pelo
+   Mercado Pago.
 4. Depois da confirmação, o código e o QR de retirada aparecem automaticamente.
 5. No `/admin`, aba **Retirada**, clique em **Abrir leitor** e aponte a
    câmera para o QR. (Sem câmera? Copie o trecho final da URL do QR e
@@ -178,9 +178,7 @@ tests/
    o Access deve identificar cada atendente e proteger o acesso antes do Worker.
 2. **Limitação de tentativas** nas consultas por CPF e na criação de pedidos,
    preferencialmente com regras de Rate Limiting da Cloudflare.
-3. **Política para reservas em dinheiro**. Elas não expiram automaticamente;
-   a equipe precisa cancelar reservas abandonadas ou definir um prazo operacional.
-4. **Backup e restauração testados** antes da abertura das vendas, além de uma
+3. **Backup e restauração testados** antes da abertura das vendas, além de uma
    tela dedicada para consultar os eventos de auditoria já registrados.
 
 Antes de qualquer deploy em produção, os passos estão na Fase 11 do plano de

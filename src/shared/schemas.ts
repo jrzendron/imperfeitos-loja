@@ -63,7 +63,7 @@ export const ajusteEstoqueSchema = z
     produto_variacao_id: z.string().min(1),
     // positivo = entrada, negativo = baixa
     delta: z.number().int().refine((v) => v !== 0, "Informe uma quantidade."),
-    motivo: z.string().trim().min(3, "O motivo é obrigatório.").max(240),
+    motivo: z.string().trim().min(3).max(240).optional(),
   })
   .strict();
 
@@ -76,10 +76,6 @@ export const confirmarRetiradaSchema = z
     token: z.string().trim().min(8).max(300),
     observacao: z.string().trim().max(240).optional(),
   })
-  .strict();
-
-export const editarItensPedidoSchema = z
-  .object({ itens: z.array(itemPedidoSchema).min(1, "O pedido precisa ter ao menos um item.").max(20) })
   .strict();
 
 export type CriarPedidoInput = z.infer<typeof criarPedidoSchema>;

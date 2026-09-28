@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { exigirAdmin } from "../middleware/admin";
-import { registrarPagamento, cancelarPedido, alterarItensPedido } from "../services/pedido.service";
+import { registrarPagamento, cancelarPedido } from "../services/pedido.service";
 import { consultarPorToken, confirmarRetirada } from "../services/retirada.service";
 import { ajustarEstoque } from "../services/estoque.service";
 import {
@@ -10,7 +10,6 @@ import {
   produtoSchema,
   variacaoSchema,
   variacaoEdicaoSchema,
-  editarItensPedidoSchema,
 } from "../../shared/schemas";
 import {
   criarProduto,
@@ -97,7 +96,7 @@ adminRouter.get("/pedidos", async (c) => {
 
   const { results } = await c.env.DB.prepare(
     `SELECT p.id, p.numero,
-            CASE WHEN pg.status = 'APPROVED' OR (p.status = 'AGUARDANDO_PAGAMENTO' AND pg.provider = 'MANUAL' AND pg.status = 'PENDING')
+            CASE WHEN pg.status = 'APPROVED'
                  THEN p.codigo_retirada ELSE NULL END AS codigo_retirada,
             p.status, p.valor_total_centavos, p.created_at, p.expires_at,
             c.nome AS cliente_nome, c.telefone AS cliente_telefone,
@@ -168,12 +167,6 @@ adminRouter.post("/pedidos/:id/cancelar", async (c) => {
     "Cancelado pelo administrador",
   );
   if (!ok) throw erro(409, "NAO_CANCELAVEL", "Este pedido não pode mais ser cancelado.");
-  return c.json({ ok: true });
-});
-
-adminRouter.put("/pedidos/:id/itens", async (c) => {
-  const { itens } = editarItensPedidoSchema.parse(await c.req.json());
-  await alterarItensPedido(c.env.DB, c.req.param("id"), itens, c.get("adminEmail"));
   return c.json({ ok: true });
 });
 

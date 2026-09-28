@@ -14,7 +14,6 @@ export interface ConsultaRetirada {
   itens: { produto_variacao_id: string; produto_nome: string; variacao_nome: string; descricao: string; quantidade: number }[];
   pago: boolean;
   pagamento_provider: string | null;
-  pagamento_em_dinheiro: boolean;
   retirado_em: string | null;
   retirado_por: string | null;
   pode_retirar: boolean;
@@ -104,7 +103,6 @@ export async function consultarPorToken(db: D1Database, token: string): Promise<
     .all<{ produto_variacao_id: string; produto_nome_snapshot: string; variacao_nome_snapshot: string; quantidade: number }>();
 
   const pago = pedido.pagamento_status === "APPROVED";
-  const pagamentoEmDinheiro = pedido.pagamento_status === "PENDING" && pedido.pagamento_provider === "MANUAL";
   const jaRetirado = Boolean(pedido.retirado_em);
   const statusOk = STATUS_RETIRAVEL.includes(pedido.status);
 
@@ -130,7 +128,6 @@ export async function consultarPorToken(db: D1Database, token: string): Promise<
     })),
     pago,
     pagamento_provider: pedido.pagamento_provider,
-    pagamento_em_dinheiro: pagamentoEmDinheiro,
     retirado_em: pedido.retirado_em,
     retirado_por: pedido.retirado_por,
     pode_retirar: impedimento === null,

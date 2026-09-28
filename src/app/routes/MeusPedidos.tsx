@@ -12,7 +12,6 @@ export function MeusPedidos() {
   const [erro, setErro] = useState<string | null>(null);
   const [pedidoAberto, setPedidoAberto] = useState<PedidoConsultadoCpf | null>(null);
   const prontoParaRetirada = pedidoAberto ? STATUS_RETIRAVEL.includes(pedidoAberto.status) : false;
-  const aguardandoDinheiro = pedidoAberto?.status === "AGUARDANDO_PAGAMENTO";
 
   useEffect(() => {
     if (!pedidoAberto) return;
@@ -131,18 +130,14 @@ export function MeusPedidos() {
               <h2 id="titulo-codigo-retirada" className="text-3xl font-black tracking-tight sm:text-4xl">
                 {prontoParaRetirada
                   ? "Código para retirada"
-                  : aguardandoDinheiro
-                    ? "Pedido em dinheiro"
-                    : pedidoAberto.status === "RETIRADO"
-                      ? "Pedido já retirado"
-                      : "Código do pedido"}
+                  : pedidoAberto.status === "RETIRADO"
+                    ? "Pedido já retirado"
+                    : "Código do pedido"}
               </h2>
               <p className="mt-3 max-w-md text-white/70">
                 {prontoParaRetirada
                   ? "Apresente esta tela no balcão para retirar o seu pedido."
-                  : aguardandoDinheiro
-                    ? "Apresente esta tela no atendimento para confirmar o pagamento em dinheiro."
-                    : "Este código permanece disponível apenas para consulta do pedido."}
+                  : "Este código permanece disponível apenas para consulta do pedido."}
               </p>
 
               <div className="mt-7 rounded-[1.5rem] bg-white p-4 shadow-2xl sm:p-6">
