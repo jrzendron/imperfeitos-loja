@@ -347,6 +347,7 @@ interface LinhaEstoque {
   id: string;
   nome: string;
   sku: string;
+  produto_id: string;
   produto_nome: string;
   valor_centavos: number;
   quantidade_fisica: number;
@@ -354,19 +355,40 @@ interface LinhaEstoque {
   disponivel: number;
 }
 
+interface ProdutoEstoque {
+  id: string;
+  nome: string;
+}
+
+function lerCentavos(valor: string): number | null {
+  const numero = Number(valor.trim().replace(/[R$\s]/g, "").replace(",", "."));
+  return Number.isFinite(numero) && numero > 0 ? Math.round(numero * 100) : null;
+}
+
 function AbaEstoque() {
   const [linhas, setLinhas] = useState<LinhaEstoque[] | null>(null);
+  const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
   const [faturamento, setFaturamento] = useState(0);
   const [editando, setEditando] = useState<string | null>(null);
   const [delta, setDelta] = useState("");
   const [motivo, setMotivo] = useState("");
   const [aviso, setAviso] = useState<{ tipo: "erro" | "sucesso"; texto: string } | null>(null);
   const [busca, setBusca] = useState("");
+  const [criandoTamanho, setCriandoTamanho] = useState(false);
+  const [produtoId, setProdutoId] = useState("");
+  const [novoTamanho, setNovoTamanho] = useState("");
+  const [novoSku, setNovoSku] = useState("");
+  const [novoPreco, setNovoPreco] = useState("");
+  const [estoqueInicial, setEstoqueInicial] = useState("");
+  const [salvandoTamanho, setSalvandoTamanho] = useState(false);
 
   const carregar = useCallback(async () => {
-    const r = await api.admin.dashboard();
-    setLinhas(r.estoque);
-    setFaturamento(r.faturamento_centavos);
+    const [dashboard, cadastro] = await Promise.all([api.admin.dashboard(), api.admin.produtos()]);
+    setLinhas(dashboard.estoque);
+    setFaturamento(dashboard.faturamento_centavos);
+    const lista = cadastro.produtos.map((produto: any) => ({ id: produto.id, nome: produto.nome }));
+    setProdutos(lista);
+    setProdutoId((atual) => atual || lista[0]?.id || "");
   }, []);
 
   useEffect(() => {
@@ -388,6 +410,43 @@ function AbaEstoque() {
       await carregar();
     } catch (e) {
       setAviso({ tipo: "erro", texto: e instanceof ErroApi ? e.message : "Falha no ajuste." });
+    }
+  }
+
+  async function criarTamanho(e: React.FormEvent) {
+    e.preventDefault();
+    const centavos = lerCentavos(novoPreco);
+    const quantidade = Number(estoqueInicial || 0);
+    if (!produtoId || !novoTamanho.trim() || centavos === null) {
+      setAviso({ tipo: "erro", texto: "Informe o produto, o tamanho e um preço válido." });
+      return;
+    }
+    if (!Number.isInteger(quantidade) || quantidade < 0) {
+      setAviso({ tipo: "erro", texto: "O estoque inicial precisa ser um número inteiro igual ou maior que zero." });
+      return;
+    }
+
+    setSalvandoTamanho(true);
+    setAviso(null);
+    try {
+      await api.admin.criarVariacao(produtoId, {
+        nome: novoTamanho.trim().toUpperCase(),
+        ...(novoSku.trim() ? { sku: novoSku.trim().toUpperCase() } : {}),
+        valor_centavos: centavos,
+        estoque_inicial: quantidade,
+        ordem: (linhas ?? []).filter((linha) => linha.produto_id === produtoId).length + 1,
+      });
+      setCriandoTamanho(false);
+      setNovoTamanho("");
+      setNovoSku("");
+      setNovoPreco("");
+      setEstoqueInicial("");
+      setAviso({ tipo: "sucesso", texto: "Novo tamanho criado e adicionado ao estoque." });
+      await carregar();
+    } catch (e) {
+      setAviso({ tipo: "erro", texto: e instanceof ErroApi ? e.message : "Não foi possível criar o tamanho." });
+    } finally {
+      setSalvandoTamanho(false);
     }
   }
 
@@ -415,6 +474,59 @@ function AbaEstoque() {
       </div>
 
       {aviso && <div className="mt-4"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
+
+      <div className="mt-5">
+        {!criandoTamanho ? (
+          <button
+            className="btn-primario w-full sm:w-auto"
+            onClick={() => {
+              setCriandoTamanho(true);
+              const referencia = linhas.find((linha) => linha.produto_id === (produtoId || produtos[0]?.id));
+              if (referencia && !novoPreco) setNovoPreco((referencia.valor_centavos / 100).toFixed(2).replace(".", ","));
+            }}
+          >
+            + Novo tamanho
+          </button>
+        ) : (
+          <form onSubmit={criarTamanho} className="cartao p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-bold">Criar novo tamanho</h3>
+                <p className="mt-0.5 text-sm text-suave">O tamanho aparecerá na loja assim que for salvo.</p>
+              </div>
+              <button type="button" className="text-2xl text-suave" onClick={() => setCriandoTamanho(false)} aria-label="Fechar">×</button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <label>
+                <span className="rotulo">Produto</span>
+                <select className="campo" value={produtoId} onChange={(e) => setProdutoId(e.target.value)} required>
+                  {produtos.map((produto) => <option key={produto.id} value={produto.id}>{produto.nome}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className="rotulo">Tamanho</span>
+                <input className="campo" value={novoTamanho} onChange={(e) => setNovoTamanho(e.target.value)} placeholder="Ex.: G2" maxLength={20} required autoFocus />
+              </label>
+              <label>
+                <span className="rotulo">Preço</span>
+                <input className="campo" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} placeholder="45,00" inputMode="decimal" required />
+              </label>
+              <label>
+                <span className="rotulo">Quantidade inicial</span>
+                <input className="campo" value={estoqueInicial} onChange={(e) => setEstoqueInicial(e.target.value)} placeholder="0" type="number" min="0" step="1" />
+              </label>
+              <label>
+                <span className="rotulo">SKU opcional</span>
+                <input className="campo" value={novoSku} onChange={(e) => setNovoSku(e.target.value)} placeholder="CAM-2026-G2" maxLength={60} />
+              </label>
+            </div>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button className="btn-primario" disabled={salvandoTamanho}>{salvandoTamanho ? "Criando…" : "Criar tamanho"}</button>
+              <button type="button" className="btn-secundario" disabled={salvandoTamanho} onClick={() => setCriandoTamanho(false)}>Cancelar</button>
+            </div>
+          </form>
+        )}
+      </div>
 
       <div className="cartao mt-5 p-4">
         <label className="rotulo" htmlFor="busca-estoque">Localizar tamanho ou SKU</label>

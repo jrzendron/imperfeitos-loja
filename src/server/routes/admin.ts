@@ -44,7 +44,7 @@ adminRouter.get("/dashboard", async (c) => {
 
   const { results: estoque } = await c.env.DB.prepare(
     `SELECT v.id, v.nome, v.sku, v.valor_centavos,
-            p.nome AS produto_nome,
+            p.id AS produto_id, p.nome AS produto_nome,
             e.quantidade_fisica, e.quantidade_reservada,
             MAX(0, e.quantidade_fisica - e.quantidade_reservada) AS disponivel
        FROM produto_variacoes v
