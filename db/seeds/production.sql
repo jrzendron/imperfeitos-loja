@@ -18,7 +18,9 @@ VALUES
   ('var_m',  'prod_camiseta', 'CAM-2026-M',  'M',  4500, 1, 2, datetime('now'), datetime('now')),
   ('var_g',  'prod_camiseta', 'CAM-2026-G',  'G',  4500, 1, 3, datetime('now'), datetime('now')),
   ('var_gg', 'prod_camiseta', 'CAM-2026-GG', 'GG', 4900, 1, 4, datetime('now'), datetime('now')),
-  ('var_xg', 'prod_camiseta', 'CAM-2026-G1', 'G1', 4900, 1, 5, datetime('now'), datetime('now'));
+  ('var_xg', 'prod_camiseta', 'CAM-2026-XG', 'XG', 4900, 1, 5, datetime('now'), datetime('now')),
+  ('var_g2', 'prod_camiseta', 'CAM-2026-G2', 'G2', 4900, 1, 6, datetime('now'), datetime('now')),
+  ('var_g3', 'prod_camiseta', 'CAM-2026-G3', 'G3', 4900, 1, 7, datetime('now'), datetime('now'));
 
 INSERT OR IGNORE INTO estoque
   (produto_variacao_id, quantidade_fisica, quantidade_reservada, updated_at)
@@ -28,7 +30,9 @@ VALUES
   ('var_m',  30, 0, datetime('now')),
   ('var_g',  25, 0, datetime('now')),
   ('var_gg',  8, 0, datetime('now')),
-  ('var_xg',  1, 0, datetime('now'));
+  ('var_xg',  1, 0, datetime('now')),
+  ('var_g2',  0, 0, datetime('now')),
+  ('var_g3',  0, 0, datetime('now'));
 
 -- O saldo inicial também precisa existir no razão de movimentos. Sem estas
 -- linhas o estoque disponível funciona, mas a conciliação histórica começa

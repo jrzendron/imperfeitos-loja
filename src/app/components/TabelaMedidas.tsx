@@ -27,7 +27,6 @@ export function TabelaMedidas() {
           </tbody>
         </table>
       </div>
-      <p className="tabela-medidas-nota">A tabela enviada identifica o tamanho XG. A correspondência com o G1 da loja ainda precisa ser confirmada.</p>
     </section>
   );
 }

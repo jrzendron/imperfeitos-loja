@@ -95,7 +95,6 @@
 .tabela-medidas thead th:first-child, .tabela-medidas tbody th { text-align: left; }
 .tabela-medidas tbody th { font-weight: 800; }
 .tabela-medidas tbody td { font-weight: 700; }
-.tabela-medidas-nota { margin-top: 1rem; color: #62594b; font-size: .82rem; }
 
 .flow-rodape { padding: 3rem 0 2rem; background: var(--flow-ink); color: #b9ab95; }
 .flow-rodape-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; }
