@@ -163,17 +163,31 @@ function AbaPedidos() {
     void carregar();
   }, [carregar]);
 
-  async function acao(id: string, tipo: "pagar" | "cancelar") {
+  async function acao(pedido: LinhaPedido, tipo: "entregar" | "cancelar") {
+    const pago = pedido.pagamento_status === "APPROVED";
+    if (tipo === "entregar" && !window.confirm(`Confirmar a entrega do pedido ${pedido.numero}?`)) return;
+    if (tipo === "cancelar") {
+      const explicacao = pago
+        ? pedido.pagamento_provider === "MERCADO_PAGO"
+          ? "O reembolso integral será solicitado ao Mercado Pago. O caixa e o estoque só serão atualizados após a confirmação do provedor."
+          : "Confirme apenas se o valor já foi devolvido ao comprador por outro meio. A loja registrará o reembolso e devolverá as peças ao estoque."
+        : "A cobrança será cancelada antes de liberar as peças reservadas.";
+      if (!window.confirm(`Cancelar o pedido ${pedido.numero}?\n\n${explicacao}`)) return;
+    }
+    const id = pedido.id;
     setOcupado(id);
     setAviso(null);
     try {
-      if (tipo === "pagar") {
-        await api.admin.marcarPago(id);
-        setAviso({ tipo: "sucesso", texto: "Pagamento registrado. O QR de retirada já está disponível para o comprador." });
+      if (tipo === "entregar") {
+        await api.admin.entregar(id);
+        setAviso({ tipo: "sucesso", texto: "Entrega registrada com data, horário e responsável." });
       } else {
-        await api.admin.cancelar(id);
-        setAviso({ tipo: "sucesso", texto: "Pedido cancelado e estoque devolvido." });
+        const resultado = await api.admin.cancelar(id, pago && pedido.pagamento_provider === "MANUAL");
+        setAviso({ tipo: "sucesso", texto: resultado.status === "REEMBOLSADO"
+          ? "Reembolso confirmado. Valor retirado do caixa e peças devolvidas ao estoque."
+          : "Cobrança cancelada e reserva liberada." });
       }
+      setDetalhe(null);
       await carregar();
     } catch (e) {
       setAviso({ tipo: "erro", texto: e instanceof ErroApi ? e.message : "Falha na operação." });
@@ -199,11 +213,12 @@ function AbaPedidos() {
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Indicador titulo="Aguardando pagamento" valor={totalStatus("AGUARDANDO_PAGAMENTO")} tom="alerta" />
         <Indicador titulo="Pagos para entregar" valor={totalStatus("PAGO") + totalStatus("PRONTO_PARA_RETIRADA")} tom="marca" />
         <Indicador titulo="Entregues" valor={totalStatus("RETIRADO")} tom="sucesso" />
-        <Indicador titulo="Faturamento confirmado" valor={formatarBRL(resumo?.faturamento_centavos ?? 0)} tom="neutro" />
+        <Indicador titulo="Caixa após reembolsos" valor={formatarBRL(resumo?.faturamento_centavos ?? 0)} tom="neutro" />
+        <Indicador titulo="Reembolsos" valor={formatarBRL(resumo?.reembolsos_centavos ?? 0)} tom="alerta" />
       </div>
 
       <div className="cartao mt-5 grid gap-3 p-4 sm:grid-cols-[1fr_14rem]">
@@ -247,7 +262,7 @@ function AbaPedidos() {
               <InfoPedido rotulo="Itens" valor={p.itens_resumo || `${p.itens} item(ns)`} />
               <InfoPedido
                 rotulo="Pagamento"
-                valor={p.pagamento_status === "APPROVED" ? "Pago" : p.pagamento_status === "PENDING" ? "Pendente" : "Não confirmado"}
+                valor={p.status === "PAGO_REVISAR" && p.pagamento_status === "APPROVED" ? "Reembolso em revisão" : p.pagamento_status === "APPROVED" ? "Pago" : p.pagamento_status === "REFUNDED" ? "Reembolsado" : p.pagamento_status === "PENDING" ? "Pendente" : "Não confirmado"}
                 complemento={p.paid_at ? formatarDataHora(p.paid_at) : undefined}
               />
               <InfoPedido
@@ -263,23 +278,14 @@ function AbaPedidos() {
               <button className="btn-secundario !py-2 !text-sm" onClick={() => void abrirDetalhe(p.id)}>
                 {carregandoDetalhe === p.id ? "Carregando…" : detalhe?.pedido?.id === p.id ? "Fechar detalhes" : "Ver detalhes"}
               </button>
-              {p.status === "AGUARDANDO_PAGAMENTO" && (
-                <>
-                <button
-                  className="btn-primario !py-2 !text-sm"
-                  disabled={ocupado === p.id}
-                  onClick={() => acao(p.id, "pagar")}
-                >
-                  {ocupado === p.id ? "Registrando…" : "Confirmar pagamento"}
-                </button>
-                <button
-                  className="btn-perigo !py-2 !text-sm"
-                  disabled={ocupado === p.id}
-                  onClick={() => acao(p.id, "cancelar")}
-                >
-                  Cancelar
-                </button>
-                </>
+              {["PAGO", "PRONTO_PARA_RETIRADA"].includes(p.status) && (
+                <button className="btn-primario !py-2 !text-sm" disabled={ocupado === p.id}
+                  onClick={() => void acao(p, "entregar")}>Confirmar entrega</button>
+              )}
+              {(["AGUARDANDO_PAGAMENTO", "PAGO", "PRONTO_PARA_RETIRADA"].includes(p.status) ||
+                (p.status === "PAGO_REVISAR" && p.pagamento_status === "APPROVED")) && (
+                <button className="btn-perigo !py-2 !text-sm" disabled={ocupado === p.id}
+                  onClick={() => void acao(p, "cancelar")}>{p.status === "PAGO_REVISAR" ? "Concluir reembolso" : p.pagamento_status === "APPROVED" ? "Cancelar e reembolsar" : "Cancelar pedido"}</button>
               )}
             </div>
             </div>
@@ -310,9 +316,12 @@ function AbaPedidos() {
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <Aviso tipo={detalhe.pedido.pagamento_status === "APPROVED" ? "sucesso" : "alerta"} titulo="Pagamento">
-                    {detalhe.pedido.pagamento_status === "APPROVED"
-                      ? `Confirmado${detalhe.pedido.paid_at ? ` em ${formatarDataHora(detalhe.pedido.paid_at)}` : ""}`
-                      : "Ainda não confirmado"}
+                    {detalhe.pedido.pagamento_status === "REFUNDED" ? "Reembolsado — fora do caixa"
+                      : detalhe.pedido.status === "PAGO_REVISAR" && detalhe.pedido.pagamento_status === "APPROVED"
+                        ? "Reembolso em revisão — entrega bloqueada"
+                      : detalhe.pedido.pagamento_status === "APPROVED"
+                        ? `Confirmado${detalhe.pedido.paid_at ? ` em ${formatarDataHora(detalhe.pedido.paid_at)}` : ""}`
+                        : "Ainda não confirmado"}
                   </Aviso>
                   <Aviso tipo={detalhe.pedido.retirado_em ? "sucesso" : "info"} titulo="Entrega">
                     {detalhe.pedido.retirado_em

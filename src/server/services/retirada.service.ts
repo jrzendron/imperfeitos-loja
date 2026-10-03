@@ -1,5 +1,5 @@
 import { novoId, agora } from "../utils/ids";
-import { sha256 } from "../utils/crypto";
+import { sha256, derivarTokenRetirada } from "../utils/crypto";
 import { erro, violouUnique } from "../utils/http";
 import { auditar } from "./auditoria.service";
 import { STATUS_RETIRAVEL, type StatusPedido } from "../../shared/types";
@@ -211,4 +211,19 @@ export async function confirmarRetirada(
     pode_retirar: false,
     impedimento: "PEDIDO JÁ RETIRADO",
   }));
+}
+
+/** O painel confirma a mesma retirada pelo ID, reutilizando todas as validações do QR. */
+export async function confirmarRetiradaPorPedido(
+  db: D1Database,
+  env: Env,
+  pedidoId: string,
+  adminEmail: string,
+): Promise<ConsultaRetirada> {
+  const linha = await db.prepare(
+    `SELECT nonce FROM retirada_tokens WHERE pedido_id = ?1 AND revoked_at IS NULL LIMIT 1`,
+  ).bind(pedidoId).first<{ nonce: string }>();
+  if (!linha) throw erro(409, "RETIRADA_INDISPONIVEL", "Este pedido não possui um QR de retirada ativo.");
+  const token = await derivarTokenRetirada(env.QR_TOKEN_SECRET, pedidoId, linha.nonce);
+  return confirmarRetirada(db, token, adminEmail);
 }

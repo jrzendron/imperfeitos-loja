@@ -150,7 +150,12 @@ titulo("5 · Pagamento duplicado não duplica estoque (o caso do webhook)");
     );
     const sucessos = r.filter((x) => x.status === 200).length;
     const baixou = antes - (await disp("var_m"));
-    if (sucessos !== 1 || baixou !== 2) problemas++;
+    // Uma repetição que chega após o primeiro pagamento pode responder 200
+    // com o mesmo QR: isso é idempotência, desde que haja uma única baixa.
+    if (sucessos < 1 || baixou !== 2) {
+      problemas++;
+      console.log(`    rodada ${rodada}: sucessos=${sucessos}, baixa=${baixou}, respostas=${r.map((x) => x.status).join(",")}`);
+    }
   }
   ok("5 rodadas de 6 pagamentos simultâneos, nenhuma venda duplicada", problemas === 0, `rodadas com erro=${problemas}`);
 }
@@ -297,6 +302,72 @@ titulo("11 · Conciliação: o estoque é explicado pelo histórico");
     );
   }
   ok("nenhuma divergência", erros === 0);
+}
+
+titulo("12 · Reembolso manual retira do caixa e devolve estoque uma vez");
+{
+  const antesEstoque = await disp("var_p");
+  const antesCaixa = (await get("/api/admin/dashboard", true)).dados.faturamento_centavos;
+  const novo = await post("/api/pedidos", {
+    cliente: cliente("reembolso"), itens: [{ produto_variacao_id: "var_p", quantidade: 2 }],
+  });
+  const lista = await get("/api/admin/pedidos?limite=100&status=AGUARDANDO_PAGAMENTO", true);
+  const alvo = lista.dados.pedidos.find((p) => p.numero === novo.dados.numero);
+  await post(`/api/admin/pedidos/${alvo.id}/marcar-pago`, null, true);
+  const qr = await get(`/api/pedidos/${novo.dados.acesso_token}/retirada`);
+  ok("venda reduz estoque e aumenta caixa", (await disp("var_p")) === antesEstoque - 2 &&
+    (await get("/api/admin/dashboard", true)).dados.faturamento_centavos === antesCaixa + 9000);
+  const semConfirmacao = await post(`/api/admin/pedidos/${alvo.id}/cancelar`, {}, true);
+  ok("reembolso manual exige confirmação de devolução", semConfirmacao.status === 400);
+  const devolvido = await post(`/api/admin/pedidos/${alvo.id}/cancelar`, { reembolso_manual_confirmado: true }, true);
+  const painel = await get("/api/admin/dashboard", true);
+  ok("pedido e pagamento marcados como reembolsados", devolvido.status === 200 &&
+    (await get(`/api/admin/pedidos/${alvo.id}`, true)).dados.pedido.status === "REEMBOLSADO");
+  ok("caixa e estoque voltam aos valores anteriores", painel.dados.faturamento_centavos === antesCaixa &&
+    (await disp("var_p")) === antesEstoque);
+  await post(`/api/admin/pedidos/${alvo.id}/cancelar`, { reembolso_manual_confirmado: true }, true);
+  ok("repetição não duplica reposição", (await disp("var_p")) === antesEstoque);
+  ok("QR revogado no reembolso", (await post("/api/admin/retirada/consultar", { token: qr.dados.token }, true)).status === 404);
+}
+
+titulo("13 · Entrega pelo gerenciador é única e impede reposição indevida");
+{
+  const novo = await post("/api/pedidos", {
+    cliente: cliente("entrega admin"), itens: [{ produto_variacao_id: "var_g", quantidade: 1 }],
+  });
+  const lista = await get("/api/admin/pedidos?limite=100&status=AGUARDANDO_PAGAMENTO", true);
+  const alvo = lista.dados.pedidos.find((p) => p.numero === novo.dados.numero);
+  await post(`/api/admin/pedidos/${alvo.id}/marcar-pago`, null, true);
+  const antes = await disp("var_g");
+  const entrega = await post(`/api/admin/pedidos/${alvo.id}/entregar`, {}, true);
+  const segunda = await post(`/api/admin/pedidos/${alvo.id}/entregar`, {}, true);
+  const cancelamento = await post(`/api/admin/pedidos/${alvo.id}/cancelar`, { reembolso_manual_confirmado: true }, true);
+  ok("entrega registra responsável e data", entrega.status === 200 &&
+    Boolean((await get(`/api/admin/pedidos/${alvo.id}`, true)).dados.pedido.retirado_em));
+  ok("segunda entrega e cancelamento após entrega bloqueados", segunda.status === 409 && cancelamento.status === 409);
+  ok("peça entregue não volta ao estoque", (await disp("var_g")) === antes);
+}
+
+titulo("14 · Entrega e reembolso simultâneos não se sobrepõem");
+{
+  const antes = await disp("var_p");
+  const novo = await post("/api/pedidos", {
+    cliente: cliente("corrida entrega reembolso"), itens: [{ produto_variacao_id: "var_p", quantidade: 1 }],
+  });
+  const lista = await get("/api/admin/pedidos?limite=100&status=AGUARDANDO_PAGAMENTO", true);
+  const alvo = lista.dados.pedidos.find((p) => p.numero === novo.dados.numero);
+  await post(`/api/admin/pedidos/${alvo.id}/marcar-pago`, null, true);
+  const [entrega, reembolso] = await Promise.all([
+    post(`/api/admin/pedidos/${alvo.id}/entregar`, {}, true),
+    post(`/api/admin/pedidos/${alvo.id}/cancelar`, { reembolso_manual_confirmado: true }, true),
+  ]);
+  const pedidoFinal = (await get(`/api/admin/pedidos/${alvo.id}`, true)).dados.pedido;
+  const estoqueFinal = await disp("var_p");
+  const coerente =
+    (pedidoFinal.status === "RETIRADO" && entrega.status === 200 && reembolso.status !== 200 && estoqueFinal === antes - 1) ||
+    (pedidoFinal.status === "REEMBOLSADO" && reembolso.status === 200 && entrega.status !== 200 && estoqueFinal === antes);
+  ok("ou entrega, ou reembolso; estoque acompanha o desfecho", coerente,
+    `pedido=${pedidoFinal.status}, entrega=${entrega.status}, reembolso=${reembolso.status}, estoque=${estoqueFinal}`);
 }
 
 console.log(

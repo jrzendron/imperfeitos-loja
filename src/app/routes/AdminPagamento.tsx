@@ -10,6 +10,7 @@ export function AdminPagamento() {
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const [testando, setTestando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
 
@@ -34,6 +35,20 @@ export function AdminPagamento() {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível atualizar a conta.");
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function testar() {
+    setErro(null);
+    setSucesso(null);
+    setTestando(true);
+    try {
+      const resultado = await api.admin.testarContaPagamento();
+      setSucesso(`Conexão validada com o Mercado Pago. Conta recebedora ${resultado.user_id}. Nenhuma cobrança foi criada.`);
+    } catch (e) {
+      setErro(e instanceof ErroApi ? e.message : "Não foi possível testar a conexão.");
+    } finally {
+      setTestando(false);
     }
   }
 
@@ -64,9 +79,14 @@ export function AdminPagamento() {
               </Aviso>
             </div>
           )}
-          <button type="button" className="btn-secundario mt-6" onClick={() => { setEditando(!editando); setErro(null); }}>
-            {editando ? "Fechar edição" : "Alterar conta recebedora"}
-          </button>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button type="button" className="btn-secundario" disabled={testando} onClick={() => void testar()}>
+              {testando ? "Verificando…" : "Testar conexão"}
+            </button>
+            <button type="button" className="btn-secundario" onClick={() => { setEditando(!editando); setErro(null); }}>
+              {editando ? "Fechar edição" : "Alterar conta recebedora"}
+            </button>
+          </div>
         </section>
       )}
 

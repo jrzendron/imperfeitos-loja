@@ -319,10 +319,8 @@ export async function cancelarPedido(
 /**
  * Registra o pagamento e libera a retirada.
  *
- * Neste build quem chama é o admin, por botão. Quando o Mercado Pago
- * entrar, o webhook chama exatamente esta mesma função — o UNIQUE em
- * pagamentos.pedido_id é o que já torna a operação idempotente, que é
- * precisamente o que um webhook precisa.
+ * O webhook e o processamento do cartão usam o mesmo caminho. A restrição
+ * UNIQUE de pagamentos.pedido_id ajuda a manter a operação idempotente.
  */
 export async function registrarPagamento(
   db: D1Database,

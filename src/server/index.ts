@@ -4,7 +4,7 @@ import { pedidosRouter } from "./routes/pedidos";
 import { adminRouter } from "./routes/admin";
 import { midiaRouter } from "./routes/midia";
 import { tratarErro } from "./utils/http";
-import { expirarPedidosVencidos } from "./services/pedido.service";
+import { expirarPedidosVencidosComConciliacao } from "./services/expiracao.service";
 import { webhookMercadoPago } from "./routes/webhook";
 import { credenciaisPagamento } from "./services/conta-pagamento.service";
 
@@ -53,15 +53,9 @@ app.notFound((c) =>
 export default {
   fetch: app.fetch,
 
-  /**
-   * Cron a cada 10 minutos: devolve ao estoque o que ninguém pagou.
-   *
-   * Quando o Mercado Pago entrar, este handler ganha uma etapa a mais —
-   * consultar o status no MP antes de expirar um pagamento PENDING, para
-   * não derrubar um pedido que a pessoa acabou de pagar (ARQUITETURA §1.11).
-   */
+  /** Cron a cada 10 minutos: consulta cobranças pendentes antes de liberar estoque. */
   async scheduled(_evento: ScheduledController, env: Env) {
-    const expirados = await expirarPedidosVencidos(env.DB);
+    const expirados = await expirarPedidosVencidosComConciliacao(env.DB, env);
     if (expirados > 0) console.log(`Cron: ${expirados} pedido(s) expirado(s), estoque devolvido.`);
   },
 } satisfies ExportedHandler<Env>;

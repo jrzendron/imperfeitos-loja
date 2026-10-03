@@ -10,7 +10,7 @@ const API = "https://api.mercadopago.com/v1/orders";
 
 type PagamentoPublico = NonNullable<PedidoPublico["pagamento"]>;
 
-interface OrdemMercadoPago {
+export interface OrdemMercadoPago {
   id: string;
   external_reference?: string;
   status?: string;
@@ -219,6 +219,77 @@ export async function criarPix(
 export async function obterOrdemMercadoPago(db: D1Database, env: Env, orderId: string, contaId: string | null): Promise<OrdemMercadoPago> {
   const conta = await credenciaisPagamento(db, env, contaId);
   return chamarMercadoPago(conta, `/${encodeURIComponent(orderId)}`);
+}
+
+export function ordemFoiReembolsada(ordem: OrdemMercadoPago): boolean {
+  return ordem.status === "refunded" && ordem.status_detail === "refunded";
+}
+
+/** Reembolso integral. A chave estável permite repetir a tentativa sem duplicar a operação. */
+export async function reembolsarOrdemMercadoPago(
+  db: D1Database,
+  env: Env,
+  orderId: string,
+  contaId: string | null,
+  pedidoId: string,
+): Promise<OrdemMercadoPago> {
+  const conta = await credenciaisPagamento(db, env, contaId);
+  if (!conta.accessToken) throw erro(503, "CONTA_MP_INDISPONIVEL", "A conta desta cobrança não está configurada.");
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API}/${encodeURIComponent(orderId)}/refund`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${conta.accessToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": `refund-${pedidoId}`,
+      },
+      body: "{}",
+    });
+  } catch {
+    throw erro(502, "MP_INDISPONIVEL", "Não foi possível falar com o Mercado Pago. Nenhum reembolso foi registrado na loja.");
+  }
+  if (!resposta.ok) {
+    console.error("Mercado Pago recusou reembolso", resposta.status, orderId);
+    throw erro(502, "REEMBOLSO_RECUSADO", "O Mercado Pago não confirmou o reembolso. Confira a conta e tente novamente.");
+  }
+  const retorno = await resposta.json() as OrdemMercadoPago;
+  if (retorno.id !== orderId) throw erro(502, "RESPOSTA_MP_INVALIDA", "A resposta do Mercado Pago não corresponde ao pedido.");
+  return retorno;
+}
+
+export async function cancelarOrdemMercadoPago(
+  db: D1Database,
+  env: Env,
+  orderId: string,
+  contaId: string | null,
+  pedidoId: string,
+): Promise<OrdemMercadoPago> {
+  const conta = await credenciaisPagamento(db, env, contaId);
+  if (!conta.accessToken) throw erro(503, "CONTA_MP_INDISPONIVEL", "A conta desta cobrança não está configurada.");
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API}/${encodeURIComponent(orderId)}/cancel`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${conta.accessToken}`,
+        Accept: "application/json",
+        "X-Idempotency-Key": `cancel-${pedidoId}`,
+      },
+    });
+  } catch {
+    throw erro(502, "MP_INDISPONIVEL", "Não foi possível cancelar a cobrança no Mercado Pago.");
+  }
+  if (!resposta.ok) {
+    console.error("Mercado Pago recusou cancelamento", resposta.status, orderId);
+    throw erro(502, "CANCELAMENTO_MP_RECUSADO", "A cobrança não foi cancelada no Mercado Pago. Confira o pagamento antes de liberar o estoque.");
+  }
+  const retorno = await resposta.json() as OrdemMercadoPago;
+  if (retorno.id !== orderId || retorno.status !== "canceled") {
+    throw erro(502, "CANCELAMENTO_MP_NAO_CONFIRMADO", "O Mercado Pago ainda não confirmou o cancelamento da cobrança.");
+  }
+  return retorno;
 }
 
 export function ordemFoiPaga(ordem: OrdemMercadoPago): boolean {

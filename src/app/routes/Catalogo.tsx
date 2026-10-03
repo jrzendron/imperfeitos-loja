@@ -74,7 +74,7 @@ export function Catalogo() {
               <div className="flow-info-card flow-info-local">
                 <span className="flow-info-icone" aria-hidden="true">↗</span>
                 <p>Onde</p>
-                <strong>Victor<br />Konder.</strong>
+                <strong>Igreja Pentecostal<br />Deus é Amor.</strong>
                 <span className="flow-info-legenda">{ENDERECO}</span>
                 <a href="#local">Ver no mapa <span aria-hidden="true">↗</span></a>
               </div>

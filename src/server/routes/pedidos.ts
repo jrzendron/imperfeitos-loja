@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { criarPedidoSchema, pagamentoCartaoSchema, consultarCpfSchema } from "../../shared/schemas";
-import { criarPedido, cancelarPedido } from "../services/pedido.service";
+import { criarPedido } from "../services/pedido.service";
+import { cancelarPedidoGerenciado } from "../services/cancelamento-pedido.service";
 import { criarPix, pagarComCartao } from "../services/mercado-pago.service";
 import { sha256, derivarTokenRetirada, hmacSha256 } from "../utils/crypto";
 import { erro } from "../utils/http";
@@ -186,8 +187,7 @@ pedidosRouter.post("/:token/cancelar", async (c) => {
 
   if (!pedido) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
 
-  const ok = await cancelarPedido(c.env.DB, pedido.id, "CLIENTE", "Cancelado pelo comprador");
-  if (!ok) throw erro(409, "NAO_CANCELAVEL", "Este pedido não pode mais ser cancelado.");
+  await cancelarPedidoGerenciado(c.env.DB, c.env, pedido.id, "CLIENTE", "comprador");
 
   return c.json({ ok: true });
 });

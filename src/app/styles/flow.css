@@ -80,6 +80,7 @@
 .flow-info-data > strong { display: flex; align-items: end; gap: .5rem; font-size: clamp(6rem, 11vw, 10rem); }
 .flow-info-data strong small { margin-bottom: .4em; font: 400 2rem/1 Anton, Impact, sans-serif; }
 .flow-info-local { color: #17130f; background: #e9dfc9; }
+.flow-info-local > strong { font-size: clamp(2rem, 3vw, 3.2rem); line-height: 1; }
 .flow-info-social { color: #f4efe5; background: #29231b; }
 
 .flow-versiculo { position: relative; overflow: hidden; padding-block: clamp(5rem, 9vw, 9rem); color: #fff9ee; background: radial-gradient(circle at 8% 80%, #3b301b, transparent 45%), #17130f; }

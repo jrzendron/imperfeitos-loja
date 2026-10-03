@@ -113,6 +113,7 @@ export const api = {
   admin: {
     sessao: () => pedir<{ ok: true; email: string }>("/admin/sessao", { admin: true }),
     contaPagamento: () => pedir<{ conta: ResumoContaPagamento }>("/admin/conta-pagamento", { admin: true }),
+    testarContaPagamento: () => pedir<{ ok: true; user_id: string; verificado_em: string }>("/admin/conta-pagamento/testar", { admin: true }),
     trocarContaPagamento: (corpo: unknown) =>
       pedir<{ conta: ResumoContaPagamento }>("/admin/conta-pagamento", {
         method: "PUT", body: JSON.stringify(corpo), admin: true,
@@ -123,8 +124,14 @@ export const api = {
     pedido: (id: string) => pedir<any>(`/admin/pedidos/${id}`, { admin: true }),
     marcarPago: (id: string) =>
       pedir<any>(`/admin/pedidos/${id}/marcar-pago`, { method: "POST", admin: true }),
-    cancelar: (id: string) =>
-      pedir<any>(`/admin/pedidos/${id}/cancelar`, { method: "POST", admin: true }),
+    cancelar: (id: string, reembolsoManualConfirmado = false) =>
+      pedir<{ ok: true; status: "CANCELADO" | "REEMBOLSADO"; reembolso_centavos: number }>(
+        `/admin/pedidos/${id}/cancelar`, {
+          method: "POST", body: JSON.stringify({ reembolso_manual_confirmado: reembolsoManualConfirmado }), admin: true,
+        },
+      ),
+    entregar: (id: string) =>
+      pedir<any>(`/admin/pedidos/${id}/entregar`, { method: "POST", admin: true }),
     ajustarEstoque: (corpo: unknown) =>
       pedir<any>("/admin/estoque/ajuste", { method: "POST", body: JSON.stringify(corpo), admin: true }),
     consultarRetirada: (token: string) =>

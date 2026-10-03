@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { exigirAdmin } from "../middleware/admin";
-import { registrarPagamento, cancelarPedido } from "../services/pedido.service";
-import { consultarPorToken, confirmarRetirada } from "../services/retirada.service";
+import { registrarPagamento } from "../services/pedido.service";
+import { consultarPorToken, confirmarRetirada, confirmarRetiradaPorPedido } from "../services/retirada.service";
+import { cancelarPedidoGerenciado } from "../services/cancelamento-pedido.service";
 import { ajustarEstoque } from "../services/estoque.service";
 import {
   ajusteEstoqueSchema,
@@ -20,7 +21,7 @@ import {
   removerImagem,
 } from "../services/produto.service";
 import { erro } from "../utils/http";
-import { resumoContaPagamento, trocarContaPagamento } from "../services/conta-pagamento.service";
+import { resumoContaPagamento, testarContaPagamento, trocarContaPagamento } from "../services/conta-pagamento.service";
 import { z } from "zod";
 import type { StatusPedido } from "../../shared/types";
 
@@ -43,6 +44,10 @@ adminRouter.get("/conta-pagamento", async (c) =>
   c.json({ conta: await resumoContaPagamento(c.env.DB, c.env) }),
 );
 
+adminRouter.get("/conta-pagamento/testar", async (c) =>
+  c.json(await testarContaPagamento(c.env.DB, c.env)),
+);
+
 adminRouter.put("/conta-pagamento", async (c) => {
   const entrada = contaPagamentoSchema.parse(await c.req.json());
   const conta = await trocarContaPagamento(c.env.DB, c.env, entrada, c.get("adminEmail"));
@@ -61,6 +66,10 @@ adminRouter.get("/dashboard", async (c) => {
        JOIN pagamentos pg ON pg.pedido_id = p.id AND pg.status = 'APPROVED'`,
   ).first<{ total: number }>();
 
+  const reembolsos = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(valor_centavos), 0) AS total FROM pagamentos WHERE status = 'REFUNDED'`,
+  ).first<{ total: number }>();
+
   const { results: estoque } = await c.env.DB.prepare(
     `SELECT v.id, v.nome, v.sku, v.valor_centavos,
             p.id AS produto_id, p.nome AS produto_nome,
@@ -75,6 +84,7 @@ adminRouter.get("/dashboard", async (c) => {
   return c.json({
     por_status: results,
     faturamento_centavos: faturamento?.total ?? 0,
+    reembolsos_centavos: reembolsos?.total ?? 0,
     estoque,
   });
 });
@@ -166,11 +176,7 @@ adminRouter.get("/pedidos/:id", async (c) => {
   return c.json({ pedido, itens });
 });
 
-/**
- * Substitui o webhook do Mercado Pago enquanto ele não existe.
- * A função chamada é a mesma que o webhook vai chamar — inclusive a
- * proteção contra pagamento duplicado, que é o UNIQUE do banco.
- */
+/** Registro manual legado, restrito ao administrador. A loja usa Pix ou cartão. */
 adminRouter.post("/pedidos/:id/marcar-pago", async (c) => {
   const resultado = await registrarPagamento(c.env.DB, c.env, c.req.param("id"), {
     provider: "MANUAL",
@@ -180,14 +186,18 @@ adminRouter.post("/pedidos/:id/marcar-pago", async (c) => {
 });
 
 adminRouter.post("/pedidos/:id/cancelar", async (c) => {
-  const ok = await cancelarPedido(
-    c.env.DB,
-    c.req.param("id"),
-    "ADMIN",
-    "Cancelado pelo administrador",
+  const corpo = z.object({ reembolso_manual_confirmado: z.boolean().optional() }).strict()
+    .parse(await c.req.json().catch(() => ({})));
+  const resultado = await cancelarPedidoGerenciado(
+    c.env.DB, c.env, c.req.param("id"), "ADMIN", c.get("adminEmail"),
+    corpo.reembolso_manual_confirmado ?? false,
   );
-  if (!ok) throw erro(409, "NAO_CANCELAVEL", "Este pedido não pode mais ser cancelado.");
-  return c.json({ ok: true });
+  return c.json({ ok: true, ...resultado });
+});
+
+adminRouter.post("/pedidos/:id/entregar", async (c) => {
+  const retirada = await confirmarRetiradaPorPedido(c.env.DB, c.env, c.req.param("id"), c.get("adminEmail"));
+  return c.json({ ok: true, retirada });
 });
 
 adminRouter.post("/estoque/ajuste", async (c) => {

@@ -120,6 +120,27 @@ export async function resumoContaPagamento(db: D1Database, env: Env) {
   };
 }
 
+/** Verifica a credencial ativa sem criar cobrança e sem devolver segredos ao navegador. */
+export async function testarContaPagamento(db: D1Database, env: Env) {
+  const conta = await credenciaisPagamento(db, env);
+  if (!conta.accessToken || !conta.publicKey || !conta.webhookSecret) {
+    throw erro(503, "CONTA_INCOMPLETA", "A conta de pagamento precisa de Public Key, Access Token e segredo do webhook.");
+  }
+  let resposta: Response;
+  try {
+    resposta = await fetch("https://api.mercadolibre.com/users/me", {
+      headers: { Authorization: `Bearer ${conta.accessToken}` },
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    throw erro(502, "MP_INDISPONIVEL", "Não foi possível verificar a conta no Mercado Pago agora.");
+  }
+  if (!resposta.ok) throw erro(502, "TOKEN_MP_INVALIDO", "O Mercado Pago não aceitou o Access Token ativo.");
+  const usuario = await resposta.json() as { id?: string | number };
+  if (!usuario.id) throw erro(502, "RESPOSTA_MP_INVALIDA", "O Mercado Pago não identificou a conta recebedora.");
+  return { ok: true, user_id: String(usuario.id), verificado_em: agora() };
+}
+
 export interface NovaContaPagamento {
   nome: string;
   public_key: string;
