@@ -43,7 +43,7 @@
 .flow-link-claro { color: #fffaf0; font-weight: 800; text-decoration: underline; text-decoration-color: var(--flow-yellow); text-underline-offset: .4em; }
 .flow-link-claro:hover { color: var(--flow-yellow); }
 .flow-hero-rodape { display: flex; align-items: center; gap: 1rem; margin-top: 3.5rem; color: #b9ab95; font-size: .73rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
-.flow-hero-rodape span { color: var(--flow-yellow); font-size: 1.35rem; }
+.flow-hero-rodape span { color: var(--flow-yellow); font: 900 1.35rem/1 Arial, sans-serif; }
 .flow-hero-visual { position: relative; width: min(100%, 34rem); justify-self: end; aspect-ratio: .84; transform: rotate(3deg); }
 .flow-hero-visual::before { content: ""; position: absolute; z-index: -1; inset: 1.2rem -1.1rem -1rem 1.1rem; border: 2px solid var(--flow-yellow); border-radius: 46% 46% 2.3rem 2.3rem; transform: rotate(4deg); }
 .flow-hero-foto { position: absolute; inset: 0; overflow: hidden; border: 3px solid rgb(255 255 255 / .12); border-radius: 46% 46% 2.3rem 2.3rem; background: #d5d1d0; box-shadow: 0 30px 90px rgb(0 0 0 / .4); }
@@ -52,14 +52,14 @@
 .flow-hero-stamp { position: absolute; right: -2.3rem; bottom: 3.2rem; display: flex; align-items: center; justify-content: center; gap: .3rem; width: 10.5rem; height: 10.5rem; border-radius: 50%; color: #17130f; background: var(--flow-yellow); box-shadow: 0 12px 40px rgb(0 0 0 / .25); transform: rotate(-17deg); }
 .flow-hero-stamp span { font: 400 5rem/.9 Anton, Impact, sans-serif; }
 .flow-hero-stamp small { font-size: .95rem; font-weight: 900; line-height: 1.1; }
-.flow-hero-asterisco { position: absolute; left: -3.2rem; top: 12%; color: #eab51d; font-size: 6rem; line-height: 1; transform: rotate(-12deg); animation: flow-girar 18s linear infinite; }
+.flow-hero-asterisco { position: absolute; left: -3.2rem; top: 12%; color: #eab51d; font: 900 6rem/1 Arial, sans-serif; transform: rotate(-12deg); animation: flow-girar 18s linear infinite; }
 .flow-hero-descer { position: absolute; bottom: 2rem; left: max(1.25rem, calc((100vw - 1240px) / 2)); z-index: 3; color: #cbbfae; font-size: .72rem; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
 .flow-hero-descer span { display: inline-grid; place-items: center; width: 2rem; height: 2rem; margin-left: .7rem; border: 1px solid rgb(255 255 255 / .4); border-radius: 50%; font-size: 1rem; }
 
 .flow-faixa { overflow: hidden; height: 4.4rem; background: var(--flow-yellow); color: #17130f; transform: rotate(-1.3deg) scale(1.02); transform-origin: center; }
 .flow-faixa-trilho { display: flex; width: max-content; align-items: center; height: 100%; animation: flow-marquee 32s linear infinite; }
 .flow-faixa-trilho span { flex: none; padding-inline: 1.6rem; font: 400 1.6rem/1 Anton, Impact, sans-serif; letter-spacing: .04em; white-space: nowrap; }
-.flow-faixa-trilho b { padding-inline: .8rem; color: #62460c; font-family: system-ui, sans-serif; }
+.flow-faixa-trilho b { padding-inline: .8rem; color: #62460c; font-family: Arial, sans-serif; }
 
 .flow-evento { padding-block: clamp(5rem, 9vw, 9rem); }
 .flow-secao-abertura { max-width: 58rem; }
@@ -72,6 +72,7 @@
 .flow-info-card > p { margin-top: 2.5rem; font-size: .76rem; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; }
 .flow-info-card > strong { display: block; margin-top: .7rem; font: 400 clamp(2.8rem, 4.7vw, 5rem)/.95 Anton, Impact, sans-serif; text-transform: uppercase; }
 .flow-info-icone { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; border: 1px solid currentColor; border-radius: 50%; font-size: 1.5rem; line-height: 1; }
+.flow-info-data .flow-info-icone { font-family: Arial, sans-serif; font-weight: 900; }
 .flow-info-legenda { display: block; margin-top: auto; padding-top: 1.2rem; font-size: .95rem; font-weight: 750; line-height: 1.45; }
 .flow-info-card a { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .6rem; margin-top: auto; padding-top: 1.2rem; font-size: .92rem; font-weight: 900; text-decoration: underline; text-underline-offset: .3em; }
 .flow-info-card .flow-info-legenda + a { margin-top: .6rem; padding-top: 0; }
@@ -86,7 +87,7 @@
 .flow-versiculo-grid { position: relative; display: grid; grid-template-columns: .85fr 1fr; gap: clamp(2rem, 7vw, 8rem); align-items: center; }
 .flow-versiculo-arte { display: flex; align-items: center; justify-content: center; position: relative; min-height: 26rem; color: #eab51d; font: 400 clamp(11rem, 23vw, 22rem)/1 Anton, Impact, sans-serif; letter-spacing: -.08em; transform: rotate(-8deg); }
 .flow-versiculo-arte span:nth-child(2) { color: #f4efe5; transform: translateY(-.08em); }
-.flow-versiculo-arte i { position: absolute; bottom: -.2rem; right: 8%; color: #eab51d; font: normal 5rem/1 system-ui, sans-serif; }
+.flow-versiculo-arte i { position: absolute; bottom: -.2rem; right: 8%; color: #eab51d; font: 900 5rem/1 Arial, sans-serif; }
 .flow-versiculo .flow-kicker { color: #eab51d; }
 .flow-versiculo .flow-titulo-secao { margin-top: 1.5rem; }
 .flow-versiculo .flow-titulo-secao em { color: #eab51d; }
@@ -113,7 +114,6 @@
 .flow-tamanhos .esgotado { opacity: .42; text-decoration: line-through; }
 .flow-produto-estoque { margin-top: .8rem; color: #6a6052; font-size: .88rem; }
 .flow-produto-info .flow-botao { margin-top: 1.8rem; }
-.flow-medidas-home { margin-top: clamp(3rem, 7vw, 6rem); }
 .tabela-medidas { padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid #d8cfbd; border-radius: 2rem; color: var(--flow-ink); background: #fffdf9; }
 .tabela-medidas-intro { max-width: 46rem; }
 .tabela-medidas-intro h2 { margin-top: 1.2rem; font-size: clamp(2.8rem, 6vw, 5rem); }

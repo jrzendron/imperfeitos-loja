@@ -4,7 +4,6 @@ import { api } from "../lib/api";
 import { formatarBRL } from "../../shared/format";
 import { Pagina, Carregando, Aviso } from "../components/ui";
 import { FotoProduto } from "../components/FotoProduto";
-import { TabelaMedidas } from "../components/TabelaMedidas";
 import type { ProdutoPublico } from "../../shared/types";
 
 const INSTAGRAM = "https://www.instagram.com/expansaoblumenau/";
@@ -39,14 +38,14 @@ export function Catalogo() {
                 <a href="#camiseta" className="flow-botao">Ver a camiseta <span aria-hidden="true">↗</span></a>
                 <a href="#local" className="flow-link-claro">Onde vai ser <span aria-hidden="true">↘</span></a>
               </div>
-              <p className="flow-hero-rodape">1 João 1:7 <span aria-hidden="true">✳</span> Blumenau / SC</p>
+              <p className="flow-hero-rodape">1 João 1:7 <span aria-hidden="true">*</span> Blumenau / SC</p>
             </div>
             <div className="flow-hero-visual" aria-hidden="true">
               <div className="flow-hero-foto">
                 <img src="/assets/camiseta-flow.webp" alt="" fetchPriority="high" />
               </div>
               <div className="flow-hero-stamp"><span>05</span><small>DEZ<br />17H</small></div>
-              <div className="flow-hero-asterisco">✳</div>
+              <div className="flow-hero-asterisco" aria-hidden="true">*</div>
             </div>
           </div>
           <a className="flow-hero-descer" href="#evento">Descubra o evento <span aria-hidden="true">↓</span></a>
@@ -54,7 +53,7 @@ export function Catalogo() {
 
         <div className="flow-faixa" aria-label="Flow de Jovens de Blumenau · 05 de dezembro · Expansão">
           <div className="flow-faixa-trilho" aria-hidden="true">
-            {Array.from({ length: 4 }, (_, n) => <span key={n}>FLOW DE JOVENS <b>✳</b> 05 DE DEZEMBRO <b>✳</b> EXPANSÃO <b>✳</b></span>)}
+            {Array.from({ length: 4 }, (_, n) => <span key={n}>FLOW DE JOVENS <b>*</b> 05 DE DEZEMBRO <b>*</b> EXPANSÃO <b>*</b></span>)}
           </div>
         </div>
 
@@ -67,7 +66,7 @@ export function Catalogo() {
             </div>
             <div className="flow-evento-cartoes">
               <div className="flow-info-card flow-info-data">
-                <span className="flow-info-icone" aria-hidden="true">✳</span>
+                <span className="flow-info-icone" aria-hidden="true">*</span>
                 <p>Quando</p>
                 <strong>05<small>DEZ</small></strong>
                 <span className="flow-info-legenda">Sábado, a partir das 17h</span>
@@ -91,7 +90,7 @@ export function Catalogo() {
 
         <section className="flow-versiculo" aria-labelledby="versiculo-titulo">
           <div className="flow-container flow-versiculo-grid">
-            <div className="flow-versiculo-arte" aria-hidden="true"><span>1</span><span>:</span><span>7</span><i>✳</i></div>
+            <div className="flow-versiculo-arte" aria-hidden="true"><span>1</span><span>:</span><span>7</span><i>*</i></div>
             <div className="flow-versiculo-texto">
               <p className="flow-kicker"><span>02</span> A mensagem do encontro</p>
               <h2 id="versiculo-titulo" className="flow-titulo-secao">Andar<br /><em>na luz.</em></h2>
@@ -135,7 +134,6 @@ export function Catalogo() {
                 );
               })}
             </div>
-            <div className="flow-medidas-home"><TabelaMedidas /></div>
           </div>
         </section>
 
