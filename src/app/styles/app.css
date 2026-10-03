@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-marca-50:  #F2F6FC;
-  --color-marca-100: #E1EAF7;
-  --color-marca-200: #B9CDE9;
-  --color-marca-500: #285EA7;
-  --color-marca-600: #1C4B8C;
-  --color-marca-700: #12386E;
-  --color-marca-900: #071F3D;
+  --color-marca-50:  #F9F4E9;
+  --color-marca-100: #F2E5C6;
+  --color-marca-200: #D8BC76;
+  --color-marca-500: #956611;
+  --color-marca-600: #73500F;
+  --color-marca-700: #51370C;
+  --color-marca-900: #241B0E;
 
   --color-ouro-100: #FAEDC9;
-  --color-ouro-400: #E9BD59;
-  --color-ouro-500: #D8A83F;
+  --color-ouro-400: #EAB51D;
+  --color-ouro-500: #D6A00F;
   --color-ouro-700: #8B6419;
 
-  --color-tinta:  #0B1D36;
-  --color-suave:  #607086;
-  --color-linha:  #DDE4EE;
-  --color-fundo:  #F6F3EC;
+  --color-tinta:  #14110D;
+  --color-suave:  #6B6256;
+  --color-linha:  #D9D0C1;
+  --color-fundo:  #F3EEE4;
 
   --color-alerta:   #9A5B06;
   --color-perigo:   #96271F;
@@ -34,10 +34,7 @@
   }
   body {
     min-height: 100dvh;
-    background:
-      radial-gradient(circle at 8% 4%, rgb(225 234 247 / 0.85), transparent 30rem),
-      radial-gradient(circle at 92% 78%, rgb(233 189 89 / 0.18), transparent 32rem),
-      var(--color-fundo);
+    background: var(--color-fundo);
   }
   /* Alvos de toque grandes: o atendente usa isso em pé, com fila. */
   button, a[role="button"] {
@@ -66,8 +63,7 @@
   position: absolute;
   inset: auto 0 0;
   height: 2px;
-  background: linear-gradient(90deg, #ef3e42, #f2c541, #34a85a, #26a9df, #2852a0);
-  opacity: 0.9;
+  background: #EAB51D;
 }
 
 @media (max-width: 640px) {

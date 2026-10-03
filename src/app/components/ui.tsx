@@ -8,35 +8,35 @@ export function Cabecalho({ admin = false }: { admin?: boolean }) {
   const total = itens.reduce((s, i) => s + i.quantidade, 0);
 
   return (
-    <header className="cabecalho-loja sticky top-0 z-40 border-b border-white/60 bg-white/95 shadow-[0_1px_20px_rgba(7,31,61,0.08)] backdrop-blur-xl">
+    <header className="cabecalho-loja sticky top-0 z-40 border-b border-white/10 bg-[#14110d] shadow-[0_1px_20px_rgba(0,0,0,0.18)]">
       <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-3 sm:gap-4 sm:px-6">
-        <Link to="/" className="group flex min-w-0 items-center gap-3 text-tinta">
+        <Link to="/" className="group flex min-w-0 items-center gap-3 text-white">
           <img
-            src="/assets/logo-ipda-oficial.webp"
-            alt="Igreja Pentecostal Deus é Amor"
-            className="h-9 w-auto max-w-[120px] object-contain transition group-hover:scale-[1.02] sm:h-12 sm:max-w-[250px]"
+            src="/assets/logo-expansao.png"
+            alt="Expansão"
+            className="h-7 w-auto max-w-[155px] object-contain transition group-hover:scale-[1.02] sm:h-9 sm:max-w-[220px]"
           />
-          <span className="hidden border-l border-linha pl-3 text-xs font-bold uppercase tracking-[0.16em] text-marca-700 sm:block">
-            Loja
+          <span className="hidden border-l border-white/20 pl-3 text-xs font-bold uppercase tracking-[0.16em] text-white/70 sm:block">
+            Flow Blumenau
           </span>
         </Link>
 
         <nav className="ml-auto flex items-center gap-1">
           {admin ? (
-            <span className="etiqueta bg-marca-100 text-marca-700">Painel</span>
+            <span className="etiqueta bg-white/10 text-white">Painel</span>
           ) : (
             <>
-              <Link to="/" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-marca-700 transition hover:bg-marca-50 md:inline-flex">Início</Link>
-              <Link to="/meus-pedidos" className="rounded-full px-2 py-2 text-sm font-semibold text-marca-700 transition hover:bg-marca-50 sm:px-3">
+              <Link to="/" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 md:inline-flex">Início</Link>
+              <Link to="/meus-pedidos" className="rounded-full px-2 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 sm:px-3">
                 <span className="sm:hidden">Pedidos</span><span className="hidden sm:inline">Meus pedidos</span>
               </Link>
               <Link
                 to="/carrinho"
-                className="relative rounded-full border border-marca-100 bg-marca-50 px-3 py-2 text-sm font-semibold text-marca-700 transition hover:border-marca-200 hover:bg-marca-100 sm:px-4"
+                className="relative rounded-full border border-[#d9a62b] bg-[#d9a62b] px-3 py-2 text-sm font-bold text-[#14110d] transition hover:bg-[#efc755] sm:px-4"
               >
                 Carrinho
                 {total > 0 && (
-                  <span className="ml-1.5 rounded-full bg-marca-600 px-1.5 py-0.5 text-xs text-white">
+                  <span className="ml-1.5 rounded-full bg-[#14110d] px-1.5 py-0.5 text-xs text-white">
                     {total}
                   </span>
                 )}
@@ -56,7 +56,7 @@ export function Pagina({ children, admin }: { children: ReactNode; admin?: boole
   return (
     <div className="min-h-dvh">
       <Cabecalho admin={admin} />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className={caminho === "/" ? "" : "mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8"}>
         {caminho !== "/" && (
           <button
             type="button"

@@ -1,4 +1,4 @@
-const VERSAO = "v4";
+const VERSAO = "v5";
 const CACHE_CASCA = `igreja-loja-casca-${VERSAO}`;
 const CACHE_PUBLICO = `igreja-loja-publico-${VERSAO}`;
 const ARQUIVOS_INICIAIS = [
@@ -6,8 +6,8 @@ const ARQUIVOS_INICIAIS = [
   "/offline.html",
   "/offline.css",
   "/manifest.webmanifest",
-  "/icons/icone-loja.svg",
-  "/assets/hero-igreja.webp",
+  "/assets/marca-expansao.png",
+  "/assets/logo-expansao.png",
 ];
 
 self.addEventListener("install", (evento) => {

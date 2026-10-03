@@ -5,6 +5,7 @@ import { carrinho } from "../lib/carrinho";
 import { formatarBRL } from "../../shared/format";
 import { Pagina, Carregando, Aviso } from "../components/ui";
 import { FotoProduto } from "../components/FotoProduto";
+import { TabelaMedidas } from "../components/TabelaMedidas";
 import type { ProdutoPublico } from "../../shared/types";
 
 export function Produto() {
@@ -139,7 +140,7 @@ export function Produto() {
         </section>
 
         <section>
-          <p className="text-xs font-bold uppercase tracking-[0.17em] text-marca-600">Coleção especial</p>
+          <p className="text-xs font-bold uppercase tracking-[0.17em] text-marca-600">3º Flow Blumenau · Expansão</p>
           <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight">{produto.nome}</h1>
           {produto.descricao && <p className="mt-3 whitespace-pre-line text-suave">{produto.descricao}</p>}
 
@@ -212,6 +213,7 @@ export function Produto() {
           Adicionar {totalPecas > 0 ? `${totalPecas} ${totalPecas === 1 ? "peça" : "peças"}` : "ao carrinho"}
         </button>
       </div>
+      <div className="mt-8"><TabelaMedidas /></div>
         </section>
       </div>
 

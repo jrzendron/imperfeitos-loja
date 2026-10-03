@@ -1,12 +1,12 @@
 {
-  "name": "Loja da Igreja Pentecostal Deus é Amor",
-  "short_name": "Loja IPDA",
+  "name": "3º Flow Blumenau | Expansão",
+  "short_name": "Flow Blumenau",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F4F7F6",
-  "theme_color": "#0B6E5F",
+  "background_color": "#14110D",
+  "theme_color": "#14110D",
   "lang": "pt-BR",
   "icons": [
-    { "src": "/icons/icone-loja.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/assets/marca-expansao.png", "sizes": "1600x1600", "type": "image/png", "purpose": "any" }
   ]
 }
