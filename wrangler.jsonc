@@ -4,6 +4,12 @@
   "main": "src/server/index.ts",
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+
+  "routes": [
+    { "pattern": "expansaoflow.com", "custom_domain": true },
+    { "pattern": "www.expansaoflow.com", "custom_domain": true }
+  ],
 
   // Os arquivos estáticos são servidos direto, sem invocar o Worker.
   // É o que mantém a casca do PWA fora da cota de requisições.

@@ -3,6 +3,9 @@
 Loja de camisetas com catálogo, reserva de estoque, pedido, QR de retirada e
 painel administrativo. Roda inteira num Cloudflare Worker, com D1 como banco.
 
+Domínio público: **https://expansaoflow.com**. `www.expansaoflow.com` também
+aponta para o mesmo Worker. O endereço `workers.dev` continua disponível.
+
 **O que já funciona:** o ciclo completo — catálogo → tamanho → carrinho →
 pedido com reserva atômica → confirmação de pagamento → QR de retirada →
 scanner → entrega, com bloqueio de retirada dupla. E o cadastro de produtos
