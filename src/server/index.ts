@@ -15,7 +15,7 @@ app.use("*", async (c, next) => {
   await next();
   c.header(
     "Content-Security-Policy",
-    "default-src 'self'; base-uri 'self'; connect-src 'self' https://api.mercadopago.com https://api-static.mercadopago.com https://*.mercadopago.com https://api.mercadolibre.com https://http2.mlstatic.com; font-src 'self' data: https://http2.mlstatic.com; form-action 'self'; frame-ancestors 'none'; frame-src https://*.mercadopago.com; img-src 'self' data: blob: https://*.mercadopago.com https://http2.mlstatic.com; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; script-src 'self' https://sdk.mercadopago.com https://www.mercadopago.com https://http2.mlstatic.com; style-src 'self' 'unsafe-inline' https://http2.mlstatic.com; worker-src 'self' blob:",
+    "default-src 'self'; base-uri 'self'; connect-src 'self' https://api.mercadopago.com https://api-static.mercadopago.com https://*.mercadopago.com https://api.mercadolibre.com https://http2.mlstatic.com; font-src 'self' data: https://http2.mlstatic.com; form-action 'self'; frame-ancestors 'none'; frame-src https://*.mercadopago.com https://maps.google.com https://www.google.com; img-src 'self' data: blob: https://*.mercadopago.com https://http2.mlstatic.com; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; script-src 'self' https://sdk.mercadopago.com https://www.mercadopago.com https://http2.mlstatic.com; style-src 'self' 'unsafe-inline' https://http2.mlstatic.com; worker-src 'self' blob:",
   );
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "DENY");

@@ -1,4 +1,4 @@
-const VERSAO = "v5";
+const VERSAO = "v6";
 const CACHE_CASCA = `igreja-loja-casca-${VERSAO}`;
 const CACHE_PUBLICO = `igreja-loja-publico-${VERSAO}`;
 const ARQUIVOS_INICIAIS = [
@@ -8,6 +8,7 @@ const ARQUIVOS_INICIAIS = [
   "/manifest.webmanifest",
   "/assets/marca-expansao.png",
   "/assets/logo-expansao.png",
+  "/assets/camiseta-flow.webp",
 ];
 
 self.addEventListener("install", (evento) => {
