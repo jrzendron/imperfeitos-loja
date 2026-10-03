@@ -4,6 +4,7 @@ import { sha256 } from "../utils/crypto";
 import { erro, violouUnique } from "../utils/http";
 import { agora, novoId, somarMinutos } from "../utils/ids";
 import { registrarPagamento } from "./pedido.service";
+import { credenciaisPagamento, type CredenciaisPagamento } from "./conta-pagamento.service";
 
 const API = "https://api.mercadopago.com/v1/orders";
 
@@ -47,8 +48,8 @@ function dinheiroMercadoPago(centavos: number): string {
   return (centavos / 100).toFixed(2);
 }
 
-async function chamarMercadoPago(env: Env, caminho: string, init?: RequestInit) {
-  if (!env.MERCADO_PAGO_ACCESS_TOKEN) {
+async function chamarMercadoPago(conta: CredenciaisPagamento, caminho: string, init?: RequestInit) {
+  if (!conta.accessToken) {
     throw erro(503, "PIX_NAO_CONFIGURADO", "O Pix ainda não foi configurado nesta loja.");
   }
 
@@ -56,7 +57,7 @@ async function chamarMercadoPago(env: Env, caminho: string, init?: RequestInit) 
     ...init,
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${env.MERCADO_PAGO_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${conta.accessToken}`,
       ...(init?.headers ?? {}),
     },
   });
@@ -130,6 +131,7 @@ export async function criarPix(
   }
 
   const ts = agora();
+  const conta = await credenciaisPagamento(db, env);
   const idempotencia = `pix-${pedido.id}`;
   const expiraEm = somarMinutos(ts, 35);
 
@@ -139,10 +141,10 @@ export async function criarPix(
         .prepare(
           `INSERT INTO pagamentos
              (id, pedido_id, provider, idempotency_key, status, valor_centavos,
-              expires_at, created_at, updated_at)
-           VALUES (?1, ?2, 'MERCADO_PAGO', ?3, 'PENDING', ?4, ?5, ?6, ?6)`,
+              expires_at, created_at, updated_at, conta_pagamento_id)
+           VALUES (?1, ?2, 'MERCADO_PAGO', ?3, 'PENDING', ?4, ?5, ?6, ?6, ?7)`,
         )
-        .bind(novoId("pag"), pedido.id, idempotencia, pedido.valor_total_centavos, expiraEm, ts)
+        .bind(novoId("pag"), pedido.id, idempotencia, pedido.valor_total_centavos, expiraEm, ts, conta.id)
         .run();
     } catch (e) {
       if (!violouUnique(e)) throw e;
@@ -153,14 +155,17 @@ export async function criarPix(
         `UPDATE pagamentos
             SET provider = 'MERCADO_PAGO', external_id = NULL, idempotency_key = ?1,
                 status = 'PENDING', valor_centavos = ?2, pix_copia_cola = NULL,
-                expires_at = ?3, paid_at = NULL, updated_at = ?4
+                expires_at = ?3, paid_at = NULL, updated_at = ?4, conta_pagamento_id = ?6
           WHERE pedido_id = ?5 AND status IN ('REJECTED','CANCELLED')`,
       )
-      .bind(idempotencia, pedido.valor_total_centavos, expiraEm, ts, pedido.id)
+      .bind(idempotencia, pedido.valor_total_centavos, expiraEm, ts, pedido.id, conta.id)
       .run();
   }
 
-  const ordem = await chamarMercadoPago(env, "", {
+  const vinculada = await db.prepare("SELECT conta_pagamento_id FROM pagamentos WHERE pedido_id = ?1")
+    .bind(pedido.id).first<{ conta_pagamento_id: string | null }>();
+  const contaCobranca = await credenciaisPagamento(db, env, vinculada?.conta_pagamento_id ?? null);
+  const ordem = await chamarMercadoPago(contaCobranca, "", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -211,8 +216,9 @@ export async function criarPix(
   return salvo;
 }
 
-export async function obterOrdemMercadoPago(env: Env, orderId: string): Promise<OrdemMercadoPago> {
-  return chamarMercadoPago(env, `/${encodeURIComponent(orderId)}`);
+export async function obterOrdemMercadoPago(db: D1Database, env: Env, orderId: string, contaId: string | null): Promise<OrdemMercadoPago> {
+  const conta = await credenciaisPagamento(db, env, contaId);
+  return chamarMercadoPago(conta, `/${encodeURIComponent(orderId)}`);
 }
 
 export function ordemFoiPaga(ordem: OrdemMercadoPago): boolean {
@@ -251,7 +257,7 @@ export async function pagarComCartao(
 
   const existente = await db
     .prepare(
-      `SELECT provider, external_id, idempotency_key, status, pix_copia_cola
+    `SELECT provider, external_id, idempotency_key, status, pix_copia_cola, conta_pagamento_id
          FROM pagamentos WHERE pedido_id = ?1 LIMIT 1`,
     )
     .bind(pedido.id)
@@ -261,6 +267,7 @@ export async function pagarComCartao(
       idempotency_key: string | null;
       status: string;
       pix_copia_cola: string | null;
+      conta_pagamento_id: string | null;
     }>();
 
   if (existente?.status === "APPROVED") return { status: "PAGO", status_detail: "accredited" };
@@ -271,13 +278,15 @@ export async function pagarComCartao(
     throw erro(409, "PAGAMENTO_PROCESSANDO", "Já existe um pagamento sendo processado.");
   }
 
+  const conta = await credenciaisPagamento(db, env);
+
   if (!existente) {
     await db
       .prepare(
         `INSERT INTO pagamentos
            (id, pedido_id, provider, idempotency_key, status, valor_centavos,
-            expires_at, created_at, updated_at)
-         VALUES (?1, ?2, 'MERCADO_PAGO', ?3, 'PENDING', ?4, ?5, ?6, ?6)`,
+            expires_at, created_at, updated_at, conta_pagamento_id)
+         VALUES (?1, ?2, 'MERCADO_PAGO', ?3, 'PENDING', ?4, ?5, ?6, ?6, ?7)`,
       )
       .bind(
         novoId("pag"),
@@ -286,6 +295,7 @@ export async function pagarComCartao(
         pedido.valor_total_centavos,
         pedido.expires_at,
         ts,
+        conta.id,
       )
       .run();
   } else if (["REJECTED", "CANCELLED"].includes(existente.status)) {
@@ -293,20 +303,23 @@ export async function pagarComCartao(
       .prepare(
         `UPDATE pagamentos
             SET idempotency_key = ?1, external_id = NULL, status = 'PENDING',
-                pix_copia_cola = NULL, updated_at = ?2
+                pix_copia_cola = NULL, updated_at = ?2, conta_pagamento_id = ?4
           WHERE pedido_id = ?3`,
       )
-      .bind(idempotencia, ts, pedido.id)
+      .bind(idempotencia, ts, pedido.id, conta.id)
       .run();
   } else if (existente.external_id) {
-    const ordem = await obterOrdemMercadoPago(env, existente.external_id);
+    const ordem = await obterOrdemMercadoPago(db, env, existente.external_id, existente.conta_pagamento_id);
     return {
       status: ordemFoiPaga(ordem) ? "PAGO" : ordemFalhou(ordem) ? "RECUSADO" : "PROCESSANDO",
       status_detail: ordem.status_detail ?? ordem.transactions?.payments?.[0]?.status_detail ?? null,
     };
   }
 
-  const ordem = await chamarMercadoPago(env, "", {
+  const vinculada = await db.prepare("SELECT conta_pagamento_id FROM pagamentos WHERE pedido_id = ?1")
+    .bind(pedido.id).first<{ conta_pagamento_id: string | null }>();
+  const contaCobranca = await credenciaisPagamento(db, env, vinculada?.conta_pagamento_id ?? null);
+  const ordem = await chamarMercadoPago(contaCobranca, "", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

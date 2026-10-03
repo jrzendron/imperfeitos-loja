@@ -15,3 +15,7 @@ CPF_PEPPER=dev-cpf-pepper-local-nao-usar-em-producao
 MERCADO_PAGO_ACCESS_TOKEN=APP_USR-token-de-teste
 MERCADO_PAGO_WEBHOOK_SECRET=assinatura-secreta-do-webhook
 MERCADO_PAGO_PUBLIC_KEY=TEST-chave-publica-de-teste
+
+# Chave base64 aleatória de 32 bytes para cifrar futuras contas cadastradas no painel.
+# Gere uma chave própria; nunca use a mesma chave em desenvolvimento e produção.
+# PAYMENT_CONFIG_KEY=<base64-de-32-bytes>

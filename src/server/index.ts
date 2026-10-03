@@ -6,6 +6,7 @@ import { midiaRouter } from "./routes/midia";
 import { tratarErro } from "./utils/http";
 import { expirarPedidosVencidos } from "./services/pedido.service";
 import { webhookMercadoPago } from "./routes/webhook";
+import { credenciaisPagamento } from "./services/conta-pagamento.service";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -30,9 +31,10 @@ app.get("/api/health", (c) =>
   c.json({ ok: true, app: c.env.APP_NAME, ambiente: c.env.APP_ENV, agora: new Date().toISOString() }),
 );
 
-app.get("/api/pagamentos/config", (c) =>
-  c.json({ mercado_pago_public_key: c.env.MERCADO_PAGO_PUBLIC_KEY || null }),
-);
+app.get("/api/pagamentos/config", async (c) => {
+  const conta = await credenciaisPagamento(c.env.DB, c.env);
+  return c.json({ mercado_pago_public_key: conta.publicKey || null });
+});
 
 app.route("/api/produtos", produtosRouter);
 app.route("/api/pedidos", pedidosRouter);

@@ -4,15 +4,17 @@ import { formatarBRL, formatarDataHora, formatarTelefone } from "../../shared/fo
 import { Pagina, Aviso, Etiqueta, Carregando } from "../components/ui";
 import { Scanner } from "../components/Scanner";
 import { AdminProdutos } from "./AdminProdutos";
+import { AdminPagamento } from "./AdminPagamento";
 import type { StatusPedido } from "../../shared/types";
 
-type Aba = "pedidos" | "produtos" | "estoque" | "retirada";
+type Aba = "pedidos" | "produtos" | "estoque" | "retirada" | "pagamentos";
 
 const ABAS: { id: Aba; titulo: string; curto: string; descricao: string }[] = [
   { id: "pedidos", titulo: "Gestão de pedidos", curto: "Pedidos", descricao: "Compradores, pagamentos e entregas" },
   { id: "estoque", titulo: "Controle de estoque", curto: "Estoque", descricao: "Peças físicas, reservadas e disponíveis" },
   { id: "produtos", titulo: "Produtos da loja", curto: "Produtos", descricao: "Fotos, tamanhos, preços e publicação" },
   { id: "retirada", titulo: "Retirada de pedidos", curto: "Retirada", descricao: "Leitura do QR e confirmação da entrega" },
+  { id: "pagamentos", titulo: "Conta de pagamentos", curto: "Pagamentos", descricao: "Conta recebedora e credenciais do Mercado Pago" },
 ];
 
 export function Admin() {
@@ -45,7 +47,7 @@ export function Admin() {
         </button>
       </div>
 
-      <nav className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-4" aria-label="Seções do painel">
+      <nav className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-5" aria-label="Seções do painel">
         {ABAS.map((item) => (
           <button
             key={item.id}
@@ -71,6 +73,7 @@ export function Admin() {
         {aba === "produtos" && <AdminProdutos />}
         {aba === "estoque" && <AbaEstoque />}
         {aba === "retirada" && <AbaRetirada />}
+        {aba === "pagamentos" && <AdminPagamento />}
       </div>
     </Pagina>
   );

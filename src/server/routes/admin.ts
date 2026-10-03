@@ -20,6 +20,8 @@ import {
   removerImagem,
 } from "../services/produto.service";
 import { erro } from "../utils/http";
+import { resumoContaPagamento, trocarContaPagamento } from "../services/conta-pagamento.service";
+import { z } from "zod";
 import type { StatusPedido } from "../../shared/types";
 
 type Ambiente = { Bindings: Env; Variables: { adminEmail: string } };
@@ -28,6 +30,24 @@ export const adminRouter = new Hono<Ambiente>();
 adminRouter.use("*", exigirAdmin);
 
 adminRouter.get("/sessao", (c) => c.json({ ok: true, email: c.get("adminEmail") }));
+
+const contaPagamentoSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  public_key: z.string().trim().min(15).max(300),
+  access_token: z.string().trim().min(20).max(500),
+  webhook_secret: z.string().trim().min(16).max(500),
+  senha_admin: z.string().min(1).max(500),
+}).strict();
+
+adminRouter.get("/conta-pagamento", async (c) =>
+  c.json({ conta: await resumoContaPagamento(c.env.DB, c.env) }),
+);
+
+adminRouter.put("/conta-pagamento", async (c) => {
+  const entrada = contaPagamentoSchema.parse(await c.req.json());
+  const conta = await trocarContaPagamento(c.env.DB, c.env, entrada, c.get("adminEmail"));
+  return c.json({ conta });
+});
 
 adminRouter.get("/dashboard", async (c) => {
   const { results } = await c.env.DB.prepare(

@@ -37,7 +37,7 @@ Abre em **http://localhost:5173**.
 | Endereço | O quê |
 |---|---|
 | `/` | Catálogo |
-| `/admin` | Painel — entre com o `ADMIN_TOKEN` do seu `.dev.vars`. Abas: Pedidos, Produtos, Estoque, Retirada |
+| `/admin` | Painel — entre com o `ADMIN_TOKEN` do seu `.dev.vars`. Abas: Pedidos, Produtos, Estoque, Retirada, Pagamentos |
 | `/pedido/<token>` | Página do comprador (o link aparece após criar o pedido) |
 
 ### Dando uma volta completa
@@ -51,6 +51,22 @@ Abre em **http://localhost:5173**.
    câmera para o QR. (Sem câmera? Copie o trecho final da URL do QR e
    cole no campo manual.)
 6. Confirme a retirada. Tente confirmar de novo: **PEDIDO JÁ RETIRADO**.
+
+### Trocar a conta recebedora
+
+Na aba **Pagamentos** do `/admin`, a conta atual aparece sem revelar seus
+segredos. Para trocar, informe o nome da conta, a **Public Key**, o **Access
+Token** e o **segredo do webhook** da mesma aplicação do Mercado Pago. Digite
+novamente o token do painel para confirmar. O servidor valida o Access Token
+no Mercado Pago antes de salvar. Configure o evento **Orders** na nova
+aplicação para `https://<domínio-da-loja>/api/webhooks/mercado-pago`.
+
+O servidor exige `PAYMENT_CONFIG_KEY`, um Secret base64 de 32 bytes, para
+cifrar os segredos no D1. Sem ele, a conta antiga configurada nos Secrets do
+Worker continua operando, mas a tela não aceita uma nova conta. Nunca perca
+essa chave enquanto houver contas cadastradas, e não a registre no Git. As
+cobranças antigas guardam a referência à conta que as criou, para que
+notificações posteriores sejam validadas com as credenciais corretas.
 
 ---
 

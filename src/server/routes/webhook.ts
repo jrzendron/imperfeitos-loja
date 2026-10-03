@@ -8,6 +8,7 @@ import {
   valorPagoEmCentavos,
 } from "../services/mercado-pago.service";
 import { registrarPagamento } from "../services/pedido.service";
+import { credenciaisPagamento } from "../services/conta-pagamento.service";
 
 export const webhookMercadoPago = new Hono<{ Bindings: Env }>();
 
@@ -64,11 +65,15 @@ webhookMercadoPago.post("/mercado-pago", async (c) => {
   const dataId = c.req.query("data.id") ?? corpo.data?.id ?? "";
   const requestId = c.req.header("x-request-id") ?? "";
   const assinatura = c.req.header("x-signature") ?? "";
+  const vinculada = await c.env.DB.prepare(
+    "SELECT conta_pagamento_id FROM pagamentos WHERE provider = 'MERCADO_PAGO' AND external_id = ?1 LIMIT 1",
+  ).bind(dataId).first<{ conta_pagamento_id: string | null }>();
+  const conta = await credenciaisPagamento(c.env.DB, c.env, vinculada?.conta_pagamento_id);
   const valida = await validarAssinaturaMercadoPago(
     assinatura,
     requestId,
     dataId,
-    c.env.MERCADO_PAGO_WEBHOOK_SECRET,
+    conta.webhookSecret,
   );
   if (!valida) throw erro(401, "ASSINATURA_INVALIDA", "Assinatura do webhook inválida.");
 
@@ -103,7 +108,7 @@ webhookMercadoPago.post("/mercado-pago", async (c) => {
     }
   }
 
-  const ordem = await obterOrdemMercadoPago(c.env, dataId);
+  const ordem = await obterOrdemMercadoPago(c.env.DB, c.env, dataId, conta.id);
   if (ordemFoiPaga(ordem)) {
     const pagamento = await c.env.DB.prepare(
       `SELECT pg.pedido_id, pg.valor_centavos

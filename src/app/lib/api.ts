@@ -6,6 +6,17 @@ export class ErroApi extends Error {
   }
 }
 
+export interface ResumoContaPagamento {
+  origem: "worker" | "painel";
+  nome: string;
+  public_key_final: string | null;
+  access_token_configurado: boolean;
+  webhook_configurado: boolean;
+  user_id: string | null;
+  atualizado_em: string | null;
+  pagamentos_pendentes: number;
+}
+
 const TOKEN_ADMIN = "igreja-loja:admin-token";
 
 export const adminToken = {
@@ -101,6 +112,11 @@ export const api = {
 
   admin: {
     sessao: () => pedir<{ ok: true; email: string }>("/admin/sessao", { admin: true }),
+    contaPagamento: () => pedir<{ conta: ResumoContaPagamento }>("/admin/conta-pagamento", { admin: true }),
+    trocarContaPagamento: (corpo: unknown) =>
+      pedir<{ conta: ResumoContaPagamento }>("/admin/conta-pagamento", {
+        method: "PUT", body: JSON.stringify(corpo), admin: true,
+      }),
     dashboard: () => pedir<any>("/admin/dashboard", { admin: true }),
     pedidos: (params: Record<string, string>) =>
       pedir<any>(`/admin/pedidos?${new URLSearchParams(params)}`, { admin: true }),
