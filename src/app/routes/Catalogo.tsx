@@ -60,7 +60,7 @@ export function Catalogo() {
         <section id="evento" className="flow-evento" aria-labelledby="evento-titulo">
           <div className="flow-container">
             <div className="flow-secao-abertura">
-              <p className="flow-kicker"><span>01</span> O encontro</p>
+              <p className="flow-kicker">O encontro</p>
               <h2 id="evento-titulo" className="flow-titulo-secao">Blumenau,<br /><em>nos vemos lá.</em></h2>
               <p>3º Flow Blumenau · Ministério de Jovens Expansão</p>
             </div>
@@ -92,7 +92,7 @@ export function Catalogo() {
           <div className="flow-container flow-versiculo-grid">
             <div className="flow-versiculo-arte" aria-hidden="true"><span>1</span><span>:</span><span>7</span><i>*</i></div>
             <div className="flow-versiculo-texto">
-              <p className="flow-kicker"><span>02</span> A mensagem do encontro</p>
+              <p className="flow-kicker">A mensagem do encontro</p>
               <h2 id="versiculo-titulo" className="flow-titulo-secao">Andar<br /><em>na luz.</em></h2>
               <blockquote>“Mas, se andarmos na luz, como ele está na luz, temos comunhão uns com os outros...”</blockquote>
               <p className="flow-versiculo-referencia">1 João 1:7</p>
@@ -104,7 +104,7 @@ export function Catalogo() {
           <div className="flow-container">
             <div className="flow-produtos-cabecalho">
               <div>
-                <p className="flow-kicker"><span>03</span> A camiseta do Flow</p>
+                <p className="flow-kicker">A camiseta do Flow</p>
                 <h2 id="camiseta-titulo" className="flow-titulo-secao">Imperfeitos<span className="flow-titulo-ponto">.</span></h2>
               </div>
               <p>Escolha seus tamanhos e faça o pedido para retirada.</p>
@@ -141,7 +141,7 @@ export function Catalogo() {
           <div className="flow-container">
             <div className="flow-local-cabecalho">
               <div>
-                <p className="flow-kicker"><span>04</span> Chegue junto</p>
+                <p className="flow-kicker">Chegue junto</p>
                 <h2 id="local-titulo" className="flow-titulo-secao">Onde<br /><em>acontece.</em></h2>
               </div>
               <p>R. Eugen Fouquet, 66<br />Victor Konder, Blumenau – SC<br />89012-140</p>
@@ -169,9 +169,11 @@ export function Catalogo() {
               <a href={MAPA} target="_blank" rel="noopener noreferrer">Como chegar ↗</a>
             </div>
           </div>
-          <div className="flow-container flow-rodape-igreja">
-            <span>Ministério de Jovens Expansão · Igreja Pentecostal Deus é Amor</span>
-            <img src="/assets/logo-ipda-oficial.webp" alt="Igreja Pentecostal Deus é Amor" />
+          <div className="flow-rodape-igreja-faixa">
+            <div className="flow-container flow-rodape-igreja">
+              <span>Ministério de Jovens Expansão · Igreja Pentecostal Deus é Amor</span>
+              <img src="/assets/logo-ipda-oficial.webp" alt="Igreja Pentecostal Deus é Amor" />
+            </div>
           </div>
         </footer>
       </div>

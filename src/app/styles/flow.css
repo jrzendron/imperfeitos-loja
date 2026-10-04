@@ -8,8 +8,7 @@
 }
 
 .flow-container { width: min(calc(100% - 2.5rem), 1240px); margin-inline: auto; }
-.flow-kicker { display: flex; align-items: center; gap: .7rem; color: #88620c; font-size: .8rem; font-weight: 900; letter-spacing: .17em; text-transform: uppercase; }
-.flow-kicker span { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid currentColor; border-radius: 50%; letter-spacing: 0; }
+.flow-kicker { color: #88620c; font-size: .8rem; font-weight: 900; letter-spacing: .17em; text-transform: uppercase; }
 .flow-titulo-secao { font: 400 clamp(3.8rem, 8vw, 7.5rem)/.91 Anton, Impact, sans-serif; letter-spacing: -.02em; text-transform: uppercase; }
 .flow-titulo-secao em { color: #a9780d; font-style: normal; }
 .flow-titulo-ponto { color: var(--flow-yellow); }
@@ -143,15 +142,16 @@
 .flow-mapa-info a { margin-left: auto; padding: .8rem 1rem; border-radius: 999px; color: white; background: #17130f; font-size: .82rem; font-weight: 900; white-space: nowrap; transition: transform .2s, background .2s; }
 .flow-mapa-info a:hover { transform: translateY(-2px); background: #4a3a21; }
 
-.flow-rodape { padding: 4rem 0 2rem; color: #b9ab95; background: #17130f; }
+.flow-rodape { padding: 4rem 0 0; color: #b9ab95; background: #17130f; }
 .flow-rodape-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; }
 .flow-rodape-grid img { width: min(14rem, 60vw); }
 .cabecalho-loja img[src*="logo-expansao"], .flow-rodape-grid img { mix-blend-mode: screen; }
 .flow-rodape-grid p { margin-top: .7rem; font-size: .9rem; }
 .flow-rodape-links { display: flex; flex-wrap: wrap; align-items: start; gap: 1.5rem; color: #fffaf0; font-weight: 800; }
 .flow-rodape-links a:hover { color: var(--flow-yellow); }
-.flow-rodape-igreja { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 4rem; padding-top: 1.7rem; border-top: 1px solid rgb(255 255 255 / .15); font-size: .8rem; }
-.flow-rodape-igreja img { max-width: 8rem; max-height: 2.5rem; object-fit: contain; background: white; padding: .35rem; }
+.flow-rodape-igreja-faixa { margin-top: 4rem; background: #eee6d7; }
+.flow-rodape-igreja { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.5rem; color: #615746; font-size: .8rem; }
+.flow-rodape-igreja img { display: block; width: min(10rem, 40vw); height: auto; object-fit: contain; }
 
 @keyframes flow-marquee { to { transform: translateX(-50%); } }
 @keyframes flow-girar { to { transform: rotate(348deg); } }
