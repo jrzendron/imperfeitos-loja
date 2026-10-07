@@ -15,6 +15,7 @@ export function Checkout() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
+  const [vendasDisponiveis, setVendasDisponiveis] = useState<boolean | null>(null);
 
   useEffect(() => {
     const aoConectar = () => setOnline(true);
@@ -25,6 +26,12 @@ export function Checkout() {
       window.removeEventListener("online", aoConectar);
       window.removeEventListener("offline", aoDesconectar);
     };
+  }, []);
+
+  useEffect(() => {
+    api.configuracaoPagamentos()
+      .then(({ vendas_disponiveis }) => setVendasDisponiveis(vendas_disponiveis))
+      .catch(() => setVendasDisponiveis(false));
   }, []);
 
   const total = itens.reduce((s, i) => s + i.valor_centavos * i.quantidade, 0);
@@ -41,6 +48,10 @@ export function Checkout() {
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
+    if (vendasDisponiveis !== true) {
+      setErro("Os pagamentos ainda não estão disponíveis. Tente novamente mais tarde.");
+      return;
+    }
     if (!navigator.onLine) {
       setErro("Sem conexão. O pedido não foi criado; conecte-se e tente novamente.");
       return;
@@ -159,7 +170,13 @@ export function Checkout() {
 
         {erro && <div className="mb-4"><Aviso tipo="erro">{erro}</Aviso></div>}
 
-        <button className="btn-primario w-full" disabled={enviando || !online}>
+        {vendasDisponiveis === false && (
+          <div className="mb-4"><Aviso tipo="erro" titulo="Pagamentos temporariamente indisponíveis">
+            Estamos configurando a conta para pagamentos reais. Nenhum pedido será criado ou cobrado agora.
+          </Aviso></div>
+        )}
+
+        <button className="btn-primario w-full" disabled={enviando || !online || vendasDisponiveis !== true}>
           {enviando ? "Criando pedido…" : "Criar pedido"}
         </button>
 

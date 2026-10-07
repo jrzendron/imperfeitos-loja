@@ -100,7 +100,7 @@ export const api = {
       method: "POST",
     }),
   configuracaoPagamentos: () =>
-    pedir<{ mercado_pago_public_key: string | null }>("/pagamentos/config"),
+    pedir<{ mercado_pago_public_key: string | null; vendas_disponiveis: boolean }>("/pagamentos/config"),
   pagarCartao: (token: string, corpo: unknown) =>
     pedir<{ status: "PAGO" | "PROCESSANDO" | "RECUSADO"; status_detail: string | null }>(
       `/pedidos/${token}/cartao`,

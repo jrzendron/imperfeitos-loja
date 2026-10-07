@@ -71,9 +71,12 @@ async function contaAtiva(db: D1Database): Promise<ContaSalva | null> {
 }
 
 /** A loja publicada só aceita novos pedidos com conta recebedora cadastrada no painel. */
+export async function vendasDisponiveis(db: D1Database, env: Env): Promise<boolean> {
+  return env.APP_ENV !== "production" || Boolean(await contaAtiva(db));
+}
+
 export async function exigirContaAtivaParaVendas(db: D1Database, env: Env): Promise<void> {
-  if (env.APP_ENV !== "production") return;
-  if (!await contaAtiva(db)) {
+  if (!await vendasDisponiveis(db, env)) {
     throw erro(503, "PAGAMENTOS_INDISPONIVEIS", "A loja está aguardando a configuração das credenciais de produção do Mercado Pago. Nenhum pedido foi criado ou cobrado.");
   }
 }
