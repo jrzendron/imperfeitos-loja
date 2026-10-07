@@ -1,4 +1,4 @@
-const VERSAO = "v6";
+const VERSAO = "v7";
 const CACHE_CASCA = `igreja-loja-casca-${VERSAO}`;
 const CACHE_PUBLICO = `igreja-loja-publico-${VERSAO}`;
 const ARQUIVOS_INICIAIS = [
@@ -50,6 +50,14 @@ async function cachePrimeiro(requisicao) {
   return (await caches.match(requisicao)) ?? buscarEGuardar(requisicao, CACHE_PUBLICO);
 }
 
+async function redePrimeiro(requisicao) {
+  try {
+    return await buscarEGuardar(requisicao, CACHE_PUBLICO);
+  } catch {
+    return (await caches.match(requisicao)) ?? Response.error();
+  }
+}
+
 async function navegacaoPublica(requisicao) {
   try {
     return await buscarEGuardar(requisicao, CACHE_CASCA);
@@ -87,7 +95,12 @@ self.addEventListener("fetch", (evento) => {
     return;
   }
 
-  if (["script", "style", "font", "image"].includes(requisicao.destination)) {
+  if (["script", "style"].includes(requisicao.destination)) {
+    evento.respondWith(redePrimeiro(requisicao));
+    return;
+  }
+
+  if (["font", "image"].includes(requisicao.destination)) {
     evento.respondWith(cachePrimeiro(requisicao));
   }
 });

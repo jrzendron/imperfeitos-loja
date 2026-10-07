@@ -16,7 +16,7 @@ createRoot(elemento).render(
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch((erro) => {
+    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registro) => registro.update()).catch((erro) => {
       console.error("Não foi possível ativar o modo offline:", erro);
     });
   });

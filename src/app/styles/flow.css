@@ -19,7 +19,9 @@
   isolation: isolate;
   min-height: min(800px, calc(100svh - 72px));
   color: #fffaf0;
-  background: #17130f;
+  background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 82% 15%, #342919, transparent 46%), linear-gradient(125deg, #17130f 17%, #241c12 55%, #17130f);
+  background-size: 180px 180px, auto, auto;
+  background-blend-mode: soft-light, normal, normal;
 }
 .flow-hero::before { content: "FLOW"; position: absolute; top: -3.2rem; left: -1.5rem; color: rgb(255 255 255 / .035); font: 400 clamp(18rem, 36vw, 38rem)/1 Anton, Impact, sans-serif; pointer-events: none; }
 .flow-hero-orbe { position: absolute; z-index: -1; border-radius: 50%; filter: blur(3rem); pointer-events: none; }
@@ -60,7 +62,25 @@
 .flow-faixa-trilho span { flex: none; padding-inline: 1.6rem; font: 400 1.6rem/1 Anton, Impact, sans-serif; letter-spacing: .04em; white-space: nowrap; }
 .flow-faixa-trilho b { padding-inline: .8rem; color: #62460c; font-family: Arial, sans-serif; }
 
-.flow-evento { padding-block: clamp(5rem, 9vw, 9rem); }
+.flow-evento, .flow-produtos, .flow-localizacao { position: relative; isolation: isolate; overflow: hidden; }
+.flow-evento > .flow-container, .flow-produtos > .flow-container, .flow-localizacao > .flow-container { position: relative; z-index: 1; }
+/* Reflexos imóveis e quase transparentes dão profundidade sem competir com o conteúdo. */
+.flow-evento::before, .flow-produtos::before, .flow-localizacao::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: min(45vw, 39rem);
+  aspect-ratio: 1.15;
+  border: 1px solid rgb(255 255 255 / .72);
+  border-radius: 28% 42% 32% 45%;
+  background: linear-gradient(135deg, rgb(255 255 255 / .62), rgb(255 255 255 / .08) 55%, rgb(163 131 73 / .075));
+  box-shadow: inset 1px 1px 0 rgb(255 255 255 / .7), inset -24px -26px 50px rgb(91 65 27 / .055), 28px 38px 75px rgb(52 41 23 / .075);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  transform: rotate(-20deg);
+}
+.flow-evento { padding-block: clamp(5rem, 9vw, 9rem); background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 82% 22%, rgb(255 255 255 / .7), transparent 40%), linear-gradient(115deg, transparent 25%, rgb(255 255 255 / .42) 42%, transparent 58%), radial-gradient(circle at 12% 85%, rgb(151 112 49 / .1), transparent 42%), #f4efe5; background-size: 180px 180px, auto, auto, auto, auto; background-blend-mode: multiply, normal, normal, normal, normal; }
+.flow-evento::before { top: 3rem; right: -6rem; }
 .flow-secao-abertura { max-width: 58rem; }
 .flow-secao-abertura h2 { margin-top: 1.6rem; }
 .flow-secao-abertura > p:last-child { margin-top: 1.5rem; color: #615746; font-size: 1.15rem; font-weight: 700; }
@@ -75,14 +95,14 @@
 .flow-info-legenda { display: block; margin-top: auto; padding-top: 1.2rem; font-size: .95rem; font-weight: 750; line-height: 1.45; }
 .flow-info-card a { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .6rem; margin-top: auto; padding-top: 1.2rem; font-size: .92rem; font-weight: 900; text-decoration: underline; text-underline-offset: .3em; }
 .flow-info-card .flow-info-legenda + a { margin-top: .6rem; padding-top: 0; }
-.flow-info-data { color: #17130f; background: #eab51d; }
+.flow-info-data { color: #17130f; background: url("/assets/flow-grain.svg") repeat, linear-gradient(135deg, #f1c443, #eab51d 55%, #d9a20d); background-size: 180px 180px, auto; background-blend-mode: multiply, normal; }
 .flow-info-data > strong { display: flex; align-items: end; gap: .5rem; font-size: clamp(6rem, 11vw, 10rem); }
 .flow-info-data strong small { margin-bottom: .4em; font: 400 2rem/1 Anton, Impact, sans-serif; }
-.flow-info-local { color: #17130f; background: #e9dfc9; }
+.flow-info-local { color: #17130f; background: url("/assets/flow-grain.svg") repeat, linear-gradient(135deg, #f5ecda, #e9dfc9 58%, #dbcfb6); background-size: 180px 180px, auto; background-blend-mode: multiply, normal; }
 .flow-info-local > strong { font-size: clamp(2rem, 3vw, 3.2rem); line-height: 1; }
-.flow-info-social { color: #f4efe5; background: #29231b; }
+.flow-info-social { color: #f4efe5; background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 85% 18%, #4b3a21, transparent 52%), #29231b; background-size: 180px 180px, auto, auto; background-blend-mode: soft-light, normal, normal; }
 
-.flow-versiculo { position: relative; overflow: hidden; padding-block: clamp(5rem, 9vw, 9rem); color: #fff9ee; background: radial-gradient(circle at 8% 80%, #3b301b, transparent 45%), #17130f; }
+.flow-versiculo { position: relative; overflow: hidden; padding-block: clamp(5rem, 9vw, 9rem); color: #fff9ee; background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 8% 80%, #49391d, transparent 48%), linear-gradient(125deg, transparent 25%, rgb(234 181 29 / .1) 47%, transparent 72%), #17130f; background-size: 180px 180px, auto, auto, auto; background-blend-mode: soft-light, normal, normal, normal; }
 .flow-versiculo::before { content: ""; position: absolute; width: 46rem; height: 46rem; top: -18rem; right: -15rem; border: 2px solid rgb(255 255 255 / .1); border-radius: 50%; box-shadow: 0 0 0 5rem rgb(255 255 255 / .035), 0 0 0 10rem rgb(255 255 255 / .022); }
 .flow-versiculo-grid { position: relative; display: grid; grid-template-columns: .85fr 1fr; gap: clamp(2rem, 7vw, 8rem); align-items: center; }
 .flow-versiculo-arte { display: flex; align-items: center; justify-content: center; position: relative; min-height: 26rem; color: #eab51d; font: 400 clamp(11rem, 23vw, 22rem)/1 Anton, Impact, sans-serif; letter-spacing: -.08em; transform: rotate(-8deg); }
@@ -94,12 +114,13 @@
 .flow-versiculo blockquote { max-width: 31ch; margin-top: 2rem; color: #f4efe5; font: italic clamp(1.35rem, 2.7vw, 2.1rem)/1.38 Georgia, serif; }
 .flow-versiculo-referencia { margin-top: 1.6rem; color: #eab51d; font-size: .82rem; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; }
 
-.flow-produtos { padding-block: clamp(5rem, 9vw, 9rem); background: #eee6d7; scroll-margin-top: 5rem; }
+.flow-produtos { padding-block: clamp(5rem, 9vw, 9rem); background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 8% 24%, rgb(255 255 255 / .75), transparent 40%), linear-gradient(118deg, transparent 28%, rgb(255 255 255 / .32) 49%, transparent 67%), radial-gradient(circle at 90% 92%, rgb(139 104 48 / .1), transparent 45%), #eee6d7; background-size: 180px 180px, auto, auto, auto, auto; background-blend-mode: multiply, normal, normal, normal, normal; scroll-margin-top: 5rem; }
+.flow-produtos::before { top: 18%; left: -6rem; transform: rotate(22deg); }
 .flow-produtos-cabecalho { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2.8rem; }
 .flow-produtos-cabecalho h2 { margin-top: 1.4rem; }
 .flow-produtos-cabecalho > p { max-width: 17rem; color: #615746; font-size: 1.1rem; font-weight: 700; }
 .flow-lista-produtos { display: grid; gap: 2rem; }
-.flow-produto { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); overflow: hidden; border: 1px solid #d8cfbd; border-radius: 2.4rem; color: var(--flow-ink); background: #fffdf9; box-shadow: 0 28px 60px rgb(23 19 15 / .08); transition: transform .28s ease, box-shadow .28s ease; }
+.flow-produto { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); overflow: hidden; border: 1px solid #d8cfbd; border-radius: 2.4rem; color: var(--flow-ink); background: linear-gradient(135deg, #fffdf9 35%, #f6f0e5); box-shadow: 0 28px 60px rgb(23 19 15 / .08); transition: transform .28s ease, box-shadow .28s ease; }
 .flow-produto:hover { transform: translateY(-6px); box-shadow: 0 35px 70px rgb(23 19 15 / .14); }
 .flow-produto-foto { position: relative; min-height: 31rem; overflow: hidden; background: #d9d4cf; }
 .flow-produto-foto img { transition: transform .6s ease; }
@@ -127,7 +148,8 @@
 .tabela-medidas tbody th { font-weight: 900; }
 .tabela-medidas tbody td { font-weight: 700; }
 
-.flow-localizacao { padding-block: clamp(5rem, 9vw, 9rem); background: #f4efe5; scroll-margin-top: 5rem; }
+.flow-localizacao { padding-block: clamp(5rem, 9vw, 9rem); background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 88% 20%, rgb(255 255 255 / .75), transparent 43%), linear-gradient(116deg, transparent 28%, rgb(255 255 255 / .34) 46%, transparent 63%), radial-gradient(circle at 12% 90%, rgb(151 112 49 / .09), transparent 40%), #f4efe5; background-size: 180px 180px, auto, auto, auto, auto; background-blend-mode: multiply, normal, normal, normal, normal; scroll-margin-top: 5rem; }
+.flow-localizacao::before { right: -6rem; bottom: 2rem; transform: rotate(18deg); }
 .flow-local-cabecalho { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2.5rem; }
 .flow-local-cabecalho h2 { margin-top: 1.3rem; }
 .flow-local-cabecalho .flow-titulo-secao em { color: #a9780d; }
@@ -142,14 +164,14 @@
 .flow-mapa-info a { margin-left: auto; padding: .8rem 1rem; border-radius: 999px; color: white; background: #17130f; font-size: .82rem; font-weight: 900; white-space: nowrap; transition: transform .2s, background .2s; }
 .flow-mapa-info a:hover { transform: translateY(-2px); background: #4a3a21; }
 
-.flow-rodape { padding: 4rem 0 0; color: #b9ab95; background: #17130f; }
+.flow-rodape { padding: 4rem 0 0; color: #b9ab95; background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 80% 20%, #2c2317, transparent 45%), #17130f; background-size: 180px 180px, auto, auto; background-blend-mode: soft-light, normal, normal; }
 .flow-rodape-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; }
 .flow-rodape-grid img { width: min(14rem, 60vw); }
 .cabecalho-loja img[src*="logo-expansao"], .flow-rodape-grid img { mix-blend-mode: screen; }
 .flow-rodape-grid p { margin-top: .7rem; font-size: .9rem; }
 .flow-rodape-links { display: flex; flex-wrap: wrap; align-items: start; gap: 1.5rem; color: #fffaf0; font-weight: 800; }
 .flow-rodape-links a:hover { color: var(--flow-yellow); }
-.flow-rodape-igreja-faixa { margin-top: 4rem; background: #eee6d7; }
+.flow-rodape-igreja-faixa { margin-top: 4rem; background: url("/assets/flow-grain.svg") repeat, linear-gradient(110deg, #eee6d7, #f7f0e5 55%, #e8ddc9); background-size: 180px 180px, auto; background-blend-mode: multiply, normal; }
 .flow-rodape-igreja { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.5rem; color: #615746; font-size: .8rem; }
 .flow-rodape-igreja img { display: block; width: min(10rem, 40vw); height: auto; object-fit: contain; }
 
@@ -178,6 +200,7 @@
   .flow-produto-foto { min-height: 25rem; height: 32rem; }
 }
 @media (max-width: 560px) {
+  .flow-evento::before, .flow-produtos::before, .flow-localizacao::before { width: 18rem; opacity: .7; }
   .flow-container { width: min(calc(100% - 2rem), 1240px); }
   .flow-hero-grid { padding-top: 3rem; }
   .flow-hero h1 { font-size: clamp(3.55rem, 14vw, 5.5rem); }

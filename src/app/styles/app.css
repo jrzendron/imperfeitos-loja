@@ -34,7 +34,9 @@
   }
   body {
     min-height: 100dvh;
-    background: var(--color-fundo);
+    background: url("/assets/flow-grain.svg") repeat, radial-gradient(circle at 85% 12%, rgb(255 255 255 / .65), transparent 40%), radial-gradient(circle at 6% 88%, rgb(148 110 48 / .07), transparent 42%), var(--color-fundo);
+    background-size: 180px 180px, auto, auto, auto;
+    background-blend-mode: multiply, normal, normal, normal;
   }
   /* Alvos de toque grandes: o atendente usa isso em pé, com fila. */
   button, a[role="button"] {
