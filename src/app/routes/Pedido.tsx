@@ -167,9 +167,8 @@ export function Pedido() {
       {aguardando && pixDeTeste && (
         <div className="mt-5">
           <Aviso tipo="erro" titulo="Este Pix é apenas de teste">
-            Não tente pagar este código pelo aplicativo do banco. A organização precisa configurar
-            a conta de produção do Mercado Pago. Você pode cancelar este pedido e fazer outro
-            depois que a configuração for corrigida.
+            Este código pertence ao ambiente de testes do Mercado Pago e não pode ser pago pelo
+            aplicativo de um banco. A confirmação deve ser simulada no ambiente de homologação.
           </Aviso>
         </div>
       )}

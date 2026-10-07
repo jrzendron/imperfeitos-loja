@@ -68,8 +68,8 @@ describe("Mercado Pago", () => {
       prepare: (sql: string) => ({
         bind: (..._valores: unknown[]) => ({
           first: async () => sql.includes("FROM pedidos p")
-            ? { id: "ped-1", numero: "PED-000001", status: "AGUARDANDO_PAGAMENTO", valor_total_centavos: 100, expires_at: null, email: "comprador@teste.local" }
-            : sql.includes("SELECT conta_pagamento_id FROM pagamentos") ? { conta_pagamento_id: null } : null,
+            ? { id: "ped-1", numero: "PED-000001", status: "AGUARDANDO_PAGAMENTO", valor_total_centavos: 100, expires_at: null, email: "comprador@teste.local", nome: "Comprador Teste" }
+            : sql.includes("SELECT conta_pagamento_id, idempotency_key FROM pagamentos") ? { conta_pagamento_id: null, idempotency_key: "pix-ped-1" } : null,
           run: async () => { comandos.push(sql); return { meta: { changes: 1 } }; },
         }),
         first: async () => null,
@@ -86,6 +86,8 @@ describe("Mercado Pago", () => {
 
     await expect(criarPix(db, { APP_ENV: "production", MERCADO_PAGO_ACCESS_TOKEN: "token-falso" } as Env, "token"))
       .rejects.toMatchObject({ codigo: "PIX_AMBIENTE_TESTE" });
+    const requisicao = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(requisicao.body as string).payer.first_name).toBe("Comprador");
     expect(comandos.some((sql) => sql.includes("status = 'REJECTED'") && sql.includes("pix_copia_cola = NULL"))).toBe(true);
     expect(batch).not.toHaveBeenCalled();
   });
@@ -96,8 +98,8 @@ describe("Mercado Pago", () => {
       prepare: (sql: string) => ({
         bind: (...valores: unknown[]) => ({
           first: async () => sql.includes("FROM pedidos p")
-            ? { id: "ped-1", numero: "PED-000001", status: "AGUARDANDO_PAGAMENTO", valor_total_centavos: 100, expires_at: null, email: "comprador@example.com" }
-            : sql.includes("SELECT conta_pagamento_id FROM pagamentos") ? { conta_pagamento_id: null } : null,
+            ? { id: "ped-1", numero: "PED-000001", status: "AGUARDANDO_PAGAMENTO", valor_total_centavos: 100, expires_at: null, email: "comprador@example.com", nome: "Comprador Teste" }
+            : sql.includes("SELECT conta_pagamento_id, idempotency_key FROM pagamentos") ? { conta_pagamento_id: null, idempotency_key: "pix-ped-1" } : null,
           run: async () => { comandos.push({ sql, valores }); return { meta: { changes: 1 } }; },
         }),
         first: async () => null,

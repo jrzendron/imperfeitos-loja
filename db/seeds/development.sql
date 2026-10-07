@@ -3,6 +3,7 @@
 -- para dar o que testar na concorrência.
 
 DELETE FROM estoque_movimentos;
+DELETE FROM webhook_events;
 DELETE FROM retiradas;
 DELETE FROM retirada_tokens;
 DELETE FROM pagamentos;
@@ -49,5 +50,5 @@ INSERT INTO estoque_movimentos (id, produto_variacao_id, tipo, quantidade, motiv
   ('mov_seed_gg', 'var_gg', 'ENTRADA',  8, 'Carga inicial (seed)', 'seed@local', '2026-09-01T12:00:00.000Z'),
   ('mov_seed_xg', 'var_xg', 'ENTRADA',  1, 'Carga inicial (seed)', 'seed@local', '2026-09-01T12:00:00.000Z');
 
-INSERT INTO configuracoes (chave, valor, updated_at) VALUES
+INSERT OR REPLACE INTO configuracoes (chave, valor, updated_at) VALUES
   ('ORDER_EXPIRATION_MINUTES', '30', '2026-09-01T12:00:00.000Z');

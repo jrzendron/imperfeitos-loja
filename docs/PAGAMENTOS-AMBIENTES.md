@@ -1,0 +1,42 @@
+# Ambientes de pagamento
+
+## Teste local (primeira etapa)
+
+- Site: `http://127.0.0.1:5173`; banco: D1 local do Wrangler. Não usa o banco da loja publicada.
+- `.dev.vars` deve conter `APP_ENV=development` e somente a `MERCADO_PAGO_PUBLIC_KEY` e o `MERCADO_PAGO_ACCESS_TOKEN` de **Testes > Credenciais de teste** da mesma aplicação Mercado Pago. A `MERCADO_PAGO_WEBHOOK_SECRET` vem da aba de teste em Webhooks e será necessária para validar notificações. Esse arquivo é ignorado pelo Git.
+- Sem a Public Key e o Access Token de teste, o checkout local fica indisponível e não cria pedidos; isso impede confundir uma tela de teste incompleta com uma integração validada.
+- O webhook do Mercado Pago não alcança `localhost`. O fluxo local pode testar geração de order e interfaces; para validar entrega automática por webhook será necessário um Worker de homologação com URL pública e banco separado. Nunca aponte o webhook de teste para o domínio da loja real.
+- Um `200` no teste de conexão do painel valida somente o Access Token. Não prova que a credencial seja de produção, que a Public Key corresponda à mesma aplicação, que exista chave Pix na conta recebedora ou que o webhook esteja correto.
+
+## Produção (somente após homologação)
+
+- Site: `https://www.expansaoflow.com`; Worker: `imperfeitos-loja`; banco: D1 `igreja-loja` remoto.
+- O painel administrativo guarda as credenciais da conta ativa. Public Key e Access Token devem vir de **Produção > Credenciais de produção** da mesma aplicação; assinatura secreta vem de **Webhooks > Modo de produção**.
+- Webhook: `https://www.expansaoflow.com/api/webhooks/mercado-pago`, método `POST`, evento **Order (Mercado Pago)**. Abrir esse endereço no navegador faz `GET` e não testa o webhook.
+- Para Pix real, a conta recebedora precisa ter uma chave Pix cadastrada e ativa no Mercado Pago.
+- Uma order Pix de produção só está pronta para o comprador quando a API retorna `qr_code`; um Access Token aceito e uma order `failed` não bastam.
+
+## Homologação pública (segunda etapa)
+
+- Site: `https://imperfeitos-loja-homologacao.ctt-josezendron.workers.dev`; Worker: `imperfeitos-loja-homologacao`; configuração: `wrangler.homologacao.jsonc`.
+- Banco D1: `igreja-loja-homologacao` (`49d7710b-2072-4348-8cb0-9ff97261e2c6`); bucket R2: `igreja-loja-media-homologacao`. São recursos separados dos de produção.
+- `APP_ENV=staging` e prefixo `TEST` nos pedidos. As credenciais de teste e segredos próprios ficam no arquivo local `.env.homologacao`, ignorado pelo Git, e são enviados ao Worker pelo parâmetro `--secrets-file`. Nunca reutilizar credenciais reais nesse arquivo.
+- Publicar somente este ambiente: `pnpm build` e depois `pnpm exec wrangler deploy --config wrangler.homologacao.jsonc --profile homologacao --secrets-file .env.homologacao`.
+- Em **Mercado Pago Developers > aplicação > Webhooks > Modo de teste**, configurar a URL `https://imperfeitos-loja-homologacao.ctt-josezendron.workers.dev/api/webhooks/mercado-pago` e selecionar **Order (Mercado Pago)**. A assinatura secreta dessa aba deve corresponder a `MERCADO_PAGO_WEBHOOK_SECRET` em `.env.homologacao`. Não alterar a URL do modo de produção para fazer esse teste.
+- O QR `TESTUSER` gerado nessa loja é fictício e não deve ser pago em banco real. O teste oficial de aprovação Pix da Orders API usa valor `50.00`, e-mail `test_user_br@testuser.com` e `payer.first_name=APRO`; a documentação informa que é uma requisição predefinida, não uma compra comum pela loja. Para validar o ciclo completo loja → Mercado Pago → webhook → pedido aprovado, será necessário um cenário de homologação específico e a URL de teste configurada.
+
+## Estado verificado em 07/10/2026
+
+- O ambiente local responde como `development`, tem D1 separado e usa credenciais de teste guardadas apenas em `.dev.vars`.
+- O Access Token local identificou um usuário `TESTUSER` diferente da conta recebedora real. A requisição oficial de Pix sandbox retornou QR `TESTUSER` e a order passou a `processed / accredited`. Uma compra de demonstração pela API da loja local também gerou QR sandbox. Uma notificação assinada com a assinatura de teste recebeu `200 OK` no webhook local.
+- Após autorizar o Wrangler com um perfil separado `homologacao`, foram criados D1 e R2 próprios e publicado o Worker de homologação. O endpoint `/api/health` respondeu `staging`, a configuração pública mostrou chave de teste e vendas habilitadas.
+- Foi criado somente no ambiente de homologação o pedido fictício `TEST-000001` por R$ 45,00. A loja obteve um QR `TESTUSER` do Mercado Pago, gravou pagamento `PENDING`, reservou 1 peça e não liberou código de retirada. O webhook público recebeu uma notificação assinada (`200 OK`), consultou a order de teste e registrou o evento; uma assinatura falsa foi rejeitada (`401`). Isso valida a rota pública e sua assinatura, mas não prova entrega automática do provedor nem aprovação de compra pela loja. Após a verificação, o banco de homologação foi novamente semeado, removendo o pedido fictício e o evento simulado.
+- A entrega automática do Mercado Pago ao webhook de homologação ainda precisa ser verificada com as credenciais e o webhook da **mesma aplicação**. Um teste direto da API Pix sandbox com R$ 50,00 e `APRO` retornou uma order `processed / accredited`; ele não alterou o banco da loja.
+- A URL de webhook foi cadastrada pelo responsável na aplicação `8259316588636150`, modo de teste, com o evento **Order (Mercado Pago)**. O simulador dessa tela enviou `data.id=123456`, que não é uma order da loja: a versão antiga do webhook tentou consultá-la e respondeu `502`. A rota de homologação agora responde `200` para uma notificação assinada sem pagamento local, sem alterar pedidos. Esse caso foi verificado com assinatura de teste; o botão do simulador ainda pode ser repetido para confirmar a entrega originada pelo Mercado Pago.
+- Um pedido fictício `TEST-000001` de R$ 50,00 com `payer.first_name=APRO` gerou Pix sandbox e a order foi aprovada (`processed / accredited`). A resposta da API identificou a aplicação `1035417964148664`, **diferente** da aplicação `8259316588636150` cuja URL de webhook está configurada. Por isso não houve entrega automática ao webhook da loja. Uma notificação assinada enviada diretamente ao Worker para essa order aprovada fez a loja registrar `PAGO`/`APPROVED`, data de pagamento e token de retirada; isso valida a conciliação, mas não substitui a entrega do provedor.
+- Próximo passo: colocar na homologação a Public Key e o Access Token da aba **Credenciais de teste** da aplicação `8259316588636150`, mantendo a assinatura secreta do webhook de teste da mesma aplicação. Depois, repetir uma order sandbox e conferir a notificação automática. Não misturar credenciais entre aplicações.
+- A conta de produção ativa tem Public Key terminada em `5ccb22`, Access Token e assinatura secreta armazenados, e o Access Token identifica o usuário Mercado Pago `3719791348`.
+- O Mercado Pago devolveu HTTP `402`, order `failed`, transação Pix `processing_error` para PED-000003, sem QR e sem valor pago. A conta recebedora ainda não tinha chave Pix cadastrada segundo o responsável. Isso é uma hipótese forte para a falha, mas o código do provedor não confirma a causa específica.
+- PED-000003 foi marcado como pagamento `REJECTED`; o pedido ainda aguarda pagamento ou expiração. Nenhuma cobrança aprovada foi registrada nesse pedido.
+
+Referências: [teste Pix na Orders API](https://www.mercadopago.com.br/developers/pt/docs/checkout-api-orders/integration-test/pix), [pré-requisito da chave Pix](https://www.mercadopago.com.br/developers/pt/docs/checkout-api-orders/payment-integration/websites/pix), [webhooks de Orders](https://www.mercadopago.com.br/developers/pt/docs/automatic-payments-orders/notifications/orders?scope=prod).

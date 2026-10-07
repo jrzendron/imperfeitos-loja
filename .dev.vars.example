@@ -1,4 +1,6 @@
 # Copie para .dev.vars (que NUNCA vai para o Git).
+# Ambiente local isolado: banco D1 local e credenciais de teste somente.
+APP_ENV=development
 #
 # Token do painel administrativo. Vale SÓ para desenvolvimento local:
 # em produção o /admin é protegido pelo Cloudflare Access (Fase 11)
@@ -11,7 +13,8 @@ QR_TOKEN_SECRET=dev-qr-secret-local-nao-usar-em-producao
 # Chave usada no HMAC do CPF. O banco nunca armazena o CPF em claro.
 CPF_PEPPER=dev-cpf-pepper-local-nao-usar-em-producao
 
-# Credenciais privadas da aplicação criada em Mercado Pago Developers.
+# Use apenas Testes > Credenciais de teste da aplicação Mercado Pago.
+# Nunca coloque aqui credenciais de produção para experimentar o checkout.
 MERCADO_PAGO_ACCESS_TOKEN=APP_USR-token-de-teste
 MERCADO_PAGO_WEBHOOK_SECRET=assinatura-secreta-do-webhook
 MERCADO_PAGO_PUBLIC_KEY=TEST-chave-publica-de-teste

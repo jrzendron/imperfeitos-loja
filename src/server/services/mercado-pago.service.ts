@@ -42,6 +42,7 @@ interface PedidoPagamento {
   valor_total_centavos: number;
   expires_at: string | null;
   email: string | null;
+  nome: string;
 }
 
 function dinheiroMercadoPago(centavos: number): string {
@@ -93,7 +94,7 @@ async function localizarPedido(db: D1Database, acessoToken: string): Promise<Ped
   const hash = await sha256(acessoToken.trim());
   const pedido = await db
     .prepare(
-      `SELECT p.id, p.numero, p.status, p.valor_total_centavos, p.expires_at, c.email
+      `SELECT p.id, p.numero, p.status, p.valor_total_centavos, p.expires_at, c.email, c.nome
          FROM pedidos p
          JOIN clientes c ON c.id = p.cliente_id
         WHERE p.acesso_token_hash = ?1 LIMIT 1`,
@@ -174,8 +175,14 @@ export async function criarPix(
       .run();
   }
 
-  const vinculada = await db.prepare("SELECT conta_pagamento_id FROM pagamentos WHERE pedido_id = ?1")
-    .bind(pedido.id).first<{ conta_pagamento_id: string | null }>();
+  const vinculada = await db.prepare("SELECT conta_pagamento_id, idempotency_key FROM pagamentos WHERE pedido_id = ?1")
+    .bind(pedido.id).first<{ conta_pagamento_id: string | null; idempotency_key: string }>();
+  if (!vinculada?.idempotency_key?.startsWith("pix-")) {
+    throw erro(409, "PAGAMENTO_EXISTENTE", "Este pedido já possui outro pagamento.");
+  }
+  // Em duas solicitações simultâneas, a segunda usa a chave que de fato foi
+  // gravada pela primeira. Nunca se criam duas orders para o mesmo pedido.
+  const chaveGravada = vinculada.idempotency_key;
   const contaCobranca = await credenciaisPagamento(db, env, vinculada?.conta_pagamento_id ?? null);
   let ordem: OrdemMercadoPago;
   try {
@@ -183,7 +190,7 @@ export async function criarPix(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Idempotency-Key": idempotencia,
+      "X-Idempotency-Key": chaveGravada,
     },
     body: JSON.stringify({
       type: "online",
@@ -199,7 +206,7 @@ export async function criarPix(
           },
         ],
       },
-      payer: { email: pedido.email },
+      payer: { email: pedido.email, first_name: pedido.nome.trim().split(/\s+/)[0] },
     }),
     });
   } catch (e) {
@@ -212,7 +219,7 @@ export async function criarPix(
         `UPDATE pagamentos SET status = 'REJECTED', external_id = ?1,
                 pix_copia_cola = NULL, updated_at = ?2
           WHERE pedido_id = ?3 AND idempotency_key = ?4 AND status = 'PENDING'`,
-      ).bind(e.resposta.data.id, agora(), pedido.id, idempotencia).run();
+      ).bind(e.resposta.data.id, agora(), pedido.id, chaveGravada).run();
     }
     throw e;
   }

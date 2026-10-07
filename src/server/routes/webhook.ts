@@ -65,9 +65,27 @@ webhookMercadoPago.post("/mercado-pago", async (c) => {
   const dataId = c.req.query("data.id") ?? corpo.data?.id ?? "";
   const requestId = c.req.header("x-request-id") ?? "";
   const assinatura = c.req.header("x-signature") ?? "";
-  const vinculada = await c.env.DB.prepare(
-    "SELECT conta_pagamento_id FROM pagamentos WHERE provider = 'MERCADO_PAGO' AND external_id = ?1 LIMIT 1",
-  ).bind(dataId).first<{ conta_pagamento_id: string | null }>();
+  type PagamentoVinculado = {
+    pedido_id: string;
+    valor_centavos: number;
+    conta_pagamento_id: string | null;
+    external_id: string | null;
+  };
+  // O provedor pode avisar antes da resposta de criação ser gravada no banco.
+  // Nesse caso, a referência do corpo serve apenas para localizar um candidato;
+  // a order será consultada e conferida na API antes de qualquer aprovação.
+  let vinculada = await c.env.DB.prepare(
+    `SELECT pedido_id, valor_centavos, conta_pagamento_id, external_id
+       FROM pagamentos WHERE provider = 'MERCADO_PAGO' AND external_id = ?1 LIMIT 1`,
+  ).bind(dataId).first<PagamentoVinculado>();
+  if (!vinculada && corpo.data?.external_reference) {
+    vinculada = await c.env.DB.prepare(
+      `SELECT pedido_id, valor_centavos, conta_pagamento_id, external_id
+         FROM pagamentos
+        WHERE provider = 'MERCADO_PAGO' AND pedido_id = ?1
+          AND (external_id IS NULL OR external_id = ?2) LIMIT 1`,
+    ).bind(corpo.data.external_reference, dataId).first<PagamentoVinculado>();
+  }
   const conta = await credenciaisPagamento(c.env.DB, c.env, vinculada?.conta_pagamento_id);
   const valida = await validarAssinaturaMercadoPago(
     assinatura,
@@ -108,26 +126,35 @@ webhookMercadoPago.post("/mercado-pago", async (c) => {
     }
   }
 
-  const ordem = await obterOrdemMercadoPago(c.env.DB, c.env, dataId, conta.id);
-  if (ordemFoiPaga(ordem)) {
-    const pagamento = await c.env.DB.prepare(
-      `SELECT pg.pedido_id, pg.valor_centavos
-         FROM pagamentos pg
-        WHERE pg.provider = 'MERCADO_PAGO' AND pg.external_id = ?1 LIMIT 1`,
-    )
-      .bind(dataId)
-      .first<{ pedido_id: string; valor_centavos: number }>();
+  if (!vinculada) {
+    // O simulador usa um ID fictício (por exemplo, 123456). Não há pagamento
+    // local a conciliar, então a notificação assinada deve ser reconhecida sem
+    // consultar uma order inexistente ou alterar qualquer pedido.
+    await c.env.DB.prepare(
+      `UPDATE webhook_events SET processed_at = ?1
+        WHERE provider = 'MERCADO_PAGO' AND external_event_id = ?2`,
+    ).bind(agora(), eventoId).run();
+    return c.json({ ok: true, ignorado: true });
+  }
 
-    if (!pagamento) {
-      console.error("Webhook de order sem pagamento local", dataId);
-      throw erro(404, "PAGAMENTO_NAO_ENCONTRADO", "Pagamento local não encontrado.");
-    }
-    if (valorPagoEmCentavos(ordem) !== pagamento.valor_centavos) {
+  const ordem = await obterOrdemMercadoPago(c.env.DB, c.env, dataId, conta.id);
+  if (ordem.id !== dataId || ordem.external_reference !== vinculada.pedido_id ||
+      Math.round(Number(ordem.total_amount) * 100) !== vinculada.valor_centavos) {
+    throw erro(409, "ORDER_DIVERGENTE", "A order recebida não corresponde ao pagamento da loja.");
+  }
+  if (!vinculada.external_id) {
+    await c.env.DB.prepare(
+      `UPDATE pagamentos SET external_id = ?1, updated_at = ?2
+        WHERE pedido_id = ?3 AND provider = 'MERCADO_PAGO' AND external_id IS NULL`,
+    ).bind(dataId, agora(), vinculada.pedido_id).run();
+  }
+  if (ordemFoiPaga(ordem)) {
+    if (valorPagoEmCentavos(ordem) !== vinculada.valor_centavos) {
       console.error("Valor divergente no webhook", dataId);
       throw erro(409, "VALOR_DIVERGENTE", "O valor recebido não corresponde ao pedido.");
     }
 
-    await registrarPagamento(c.env.DB, c.env, pagamento.pedido_id, {
+    await registrarPagamento(c.env.DB, c.env, vinculada.pedido_id, {
       provider: "MERCADO_PAGO",
       adminEmail: "webhook@mercadopago",
       externalId: dataId,
