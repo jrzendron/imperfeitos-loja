@@ -112,7 +112,7 @@ export async function criarPedido(
       `SELECT v.id, v.nome, v.valor_centavos, p.nome AS produto_nome
          FROM produto_variacoes v
          JOIN produtos p ON p.id = v.produto_id
-        WHERE v.id IN (${marcadores}) AND v.ativo = 1 AND p.ativo = 1`,
+        WHERE v.id IN (${marcadores}) AND v.ativo = 1 AND v.preco_definido = 1 AND p.ativo = 1`,
     )
     .bind(...itens.map((i) => i.produto_variacao_id))
     .all<VariacaoLida>();
@@ -177,7 +177,7 @@ export async function criarPedido(
                   v.valor_centavos * ?3, ?4
              FROM produto_variacoes v
              JOIN produtos p ON p.id = v.produto_id
-            WHERE v.id = ?5 AND v.ativo = 1 AND p.ativo = 1`,
+            WHERE v.id = ?5 AND v.ativo = 1 AND v.preco_definido = 1 AND p.ativo = 1`,
         )
         .bind(novoId("itm"), pedidoId, item.quantidade, ts, item.produto_variacao_id),
     );

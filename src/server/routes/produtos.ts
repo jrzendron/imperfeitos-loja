@@ -14,6 +14,7 @@ interface LinhaCatalogo {
   categoria: "ADULTO" | "INFANTIL";
   altura_cm: number | null;
   largura_cm: number | null;
+  preco_definido: number;
   valor_centavos: number;
   ordem: number;
   disponivel: number;
@@ -35,9 +36,12 @@ const SQL_CATALOGO = `
          v.categoria,
          v.altura_cm,
          v.largura_cm,
-         v.valor_centavos,
+         v.preco_definido,
+         CASE WHEN v.preco_definido = 1 THEN v.valor_centavos ELSE 0 END AS valor_centavos,
          v.ordem,
-         MAX(0, COALESCE(e.quantidade_fisica, 0) - COALESCE(e.quantidade_reservada, 0)) AS disponivel
+         CASE WHEN v.preco_definido = 1
+           THEN MAX(0, COALESCE(e.quantidade_fisica, 0) - COALESCE(e.quantidade_reservada, 0))
+           ELSE 0 END AS disponivel
     FROM produtos p
     JOIN produto_variacoes v ON v.produto_id = p.id AND v.ativo = 1
     LEFT JOIN estoque e      ON e.produto_variacao_id = v.id
@@ -101,6 +105,7 @@ function agrupar(linhas: LinhaCatalogo[]): ProdutoPublico[] {
       categoria: l.categoria,
       altura_cm: l.altura_cm,
       largura_cm: l.largura_cm,
+      preco_definido: l.preco_definido,
       valor_centavos: l.valor_centavos,
       ordem: l.ordem,
       disponivel: l.disponivel,

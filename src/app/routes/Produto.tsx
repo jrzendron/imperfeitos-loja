@@ -183,7 +183,7 @@ export function Produto() {
               <div className="min-w-0 flex-1">
                 <span className={`block text-xl font-black ${esgotado ? "line-through" : ""}`}>{v.nome}</span>
                 <span className="mt-0.5 block text-sm text-suave">
-                  {esgotado ? "Esgotado" : `${formatarBRL(v.valor_centavos)} · ${v.disponivel} disponíveis`}
+                  {v.preco_definido !== 1 ? "Preço a definir" : esgotado ? "Esgotado" : `${formatarBRL(v.valor_centavos)} · ${v.disponivel} disponíveis`}
                 </span>
               </div>
 

@@ -29,6 +29,7 @@ export interface VariacaoPublica {
   categoria: "ADULTO" | "INFANTIL";
   altura_cm: number | null;
   largura_cm: number | null;
+  preco_definido: number;
   valor_centavos: number;
   ordem: number;
   disponivel: number;

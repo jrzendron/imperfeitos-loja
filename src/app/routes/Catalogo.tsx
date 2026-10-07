@@ -114,7 +114,8 @@ export function Catalogo() {
             {produtos?.length === 0 && <Aviso>Nenhum produto disponível no momento.</Aviso>}
             <div className="flow-lista-produtos">
               {produtos?.map((produto) => {
-                const menor = produto.variacoes.length ? Math.min(...produto.variacoes.map((v) => v.valor_centavos)) : null;
+                const comPreco = produto.variacoes.filter((v) => v.preco_definido === 1);
+                const menor = comPreco.length ? Math.min(...comPreco.map((v) => v.valor_centavos)) : null;
                 const total = produto.variacoes.reduce((s, v) => s + v.disponivel, 0);
                 return (
                   <Link key={produto.id} to="/produto/$slug" params={{ slug: produto.slug }} className="flow-produto">

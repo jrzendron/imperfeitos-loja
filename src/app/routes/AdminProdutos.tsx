@@ -13,6 +13,7 @@ interface Variacao {
   altura_cm: number | null;
   largura_cm: number | null;
   valor_centavos: number;
+  preco_definido: number;
   ativo: number;
   ordem: number;
   quantidade_fisica: number;
@@ -427,7 +428,7 @@ function LinhaTamanho({
   aoAvisar: (tipo: "erro" | "sucesso", texto: string) => void;
 }) {
   const [editando, setEditando] = useState(false);
-  const [valor, setValor] = useState(paraReais(variacao.valor_centavos));
+  const [valor, setValor] = useState(variacao.preco_definido === 1 ? paraReais(variacao.valor_centavos) : "");
   const [nome, setNome] = useState(variacao.nome);
   const [categoria, setCategoria] = useState(variacao.categoria);
   const [altura, setAltura] = useState(variacao.altura_cm?.toString().replace(".", ",") ?? "");
@@ -472,7 +473,7 @@ function LinhaTamanho({
           <select className="campo w-28 !py-1.5" value={categoria} onChange={(e) => setCategoria(e.target.value as "ADULTO" | "INFANTIL")} aria-label="Categoria">
             <option value="ADULTO">Adulto</option><option value="INFANTIL">Infantil</option>
           </select>
-          <input className="campo w-28 !py-1.5" value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" aria-label="Preço em reais" />
+          <input className="campo w-28 !py-1.5" value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" aria-label="Preço em reais" placeholder="Preço em R$" />
           <input className="campo w-28 !py-1.5" value={altura} onChange={(e) => setAltura(e.target.value)} inputMode="decimal" aria-label="Altura em centímetros" placeholder="Altura cm" />
           <input className="campo w-28 !py-1.5" value={largura} onChange={(e) => setLargura(e.target.value)} inputMode="decimal" aria-label="Largura em centímetros" placeholder="Largura cm" />
           <button className="btn-primario !px-3 !py-1.5 !text-sm" onClick={salvarTamanho}>
@@ -484,7 +485,7 @@ function LinhaTamanho({
         </div>
       ) : (
         <>
-          <span className="font-semibold tabular-nums">{formatarBRL(variacao.valor_centavos)}</span>
+          <span className="font-semibold tabular-nums">{variacao.preco_definido === 1 ? formatarBRL(variacao.valor_centavos) : "Preço pendente"}</span>
           <span className="text-sm text-suave">{variacao.altura_cm ?? "—"} × {variacao.largura_cm ?? "—"} cm</span>
           <button className="text-sm font-semibold underline" onClick={() => setEditando(true)}>Editar</button>
         </>

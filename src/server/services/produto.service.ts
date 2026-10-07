@@ -190,7 +190,10 @@ export async function editarVariacao(
   if (entrada.altura_cm !== undefined) set("altura_cm", entrada.altura_cm);
   if (entrada.largura_cm !== undefined) set("largura_cm", entrada.largura_cm);
   if (entrada.sku !== undefined) set("sku", entrada.sku);
-  if (entrada.valor_centavos !== undefined) set("valor_centavos", entrada.valor_centavos);
+  if (entrada.valor_centavos !== undefined) {
+    set("valor_centavos", entrada.valor_centavos);
+    set("preco_definido", 1);
+  }
   if (entrada.ordem !== undefined) set("ordem", entrada.ordem);
   if (entrada.ativo !== undefined) set("ativo", entrada.ativo ? 1 : 0);
   if (campos.length === 0) return;

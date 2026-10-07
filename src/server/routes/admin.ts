@@ -71,10 +71,11 @@ adminRouter.get("/dashboard", async (c) => {
   ).first<{ total: number }>();
 
   const { results: estoque } = await c.env.DB.prepare(
-    `SELECT v.id, v.nome, v.categoria, v.sku, v.valor_centavos,
+    `SELECT v.id, v.nome, v.categoria, v.sku, v.valor_centavos, v.preco_definido,
             p.id AS produto_id, p.nome AS produto_nome,
             e.quantidade_fisica, e.quantidade_reservada,
-            MAX(0, e.quantidade_fisica - e.quantidade_reservada) AS disponivel
+            CASE WHEN v.preco_definido = 1
+              THEN MAX(0, e.quantidade_fisica - e.quantidade_reservada) ELSE 0 END AS disponivel
        FROM produto_variacoes v
        JOIN produtos p ON p.id = v.produto_id
        JOIN estoque  e ON e.produto_variacao_id = v.id
@@ -242,10 +243,12 @@ adminRouter.get("/produtos", async (c) => {
 
   const { results: variacoes } = await c.env.DB.prepare(
     `SELECT v.id, v.produto_id, v.sku, v.nome, v.categoria, v.altura_cm, v.largura_cm,
-            v.valor_centavos, v.ativo, v.ordem,
+            v.valor_centavos, v.preco_definido, v.ativo, v.ordem,
             COALESCE(e.quantidade_fisica, 0)    AS quantidade_fisica,
             COALESCE(e.quantidade_reservada, 0) AS quantidade_reservada,
-            MAX(0, COALESCE(e.quantidade_fisica, 0) - COALESCE(e.quantidade_reservada, 0)) AS disponivel,
+            CASE WHEN v.preco_definido = 1
+              THEN MAX(0, COALESCE(e.quantidade_fisica, 0) - COALESCE(e.quantidade_reservada, 0))
+              ELSE 0 END AS disponivel,
             (SELECT COUNT(*) FROM pedido_itens i WHERE i.produto_variacao_id = v.id) AS em_pedidos
        FROM produto_variacoes v
        LEFT JOIN estoque e ON e.produto_variacao_id = v.id

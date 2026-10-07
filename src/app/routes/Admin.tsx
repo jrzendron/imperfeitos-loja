@@ -363,6 +363,7 @@ interface LinhaEstoque {
   produto_id: string;
   produto_nome: string;
   valor_centavos: number;
+  preco_definido: number;
   quantidade_fisica: number;
   quantidade_reservada: number;
   disponivel: number;
@@ -575,7 +576,7 @@ function AbaEstoque() {
               <span className="etiqueta bg-marca-100 text-marca-700">{l.categoria === "INFANTIL" ? "Infantil" : "Adulto"}</span>
               <span className="text-sm text-suave">{l.produto_nome}</span>
               <span className="ml-auto font-semibold tabular-nums">
-                {formatarBRL(l.valor_centavos)}
+                {l.preco_definido === 1 ? formatarBRL(l.valor_centavos) : "Preço pendente"}
               </span>
             </div>
 
