@@ -1,21 +1,24 @@
-const medidas = [
-  { tamanho: "PP", altura: 66, largura: 47 },
-  { tamanho: "P", altura: 68, largura: 51 },
-  { tamanho: "M", altura: 71, largura: 54 },
-  { tamanho: "G", altura: 73, largura: 57 },
-  { tamanho: "GG", altura: 75, largura: 60 },
-  { tamanho: "XG", altura: 78, largura: 63 },
-  { tamanho: "G2", altura: 83, largura: 67 },
-  { tamanho: "G3", altura: 87, largura: 71 },
-];
+import type { VariacaoPublica } from "../../shared/types";
 
-export function TabelaMedidas() {
+function formatarMedida(valor: number | null): string {
+  return valor === null ? "—" : `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(valor)} cm`;
+}
+
+export function TabelaMedidas({ variacoes, categoria }: {
+  variacoes: VariacaoPublica[];
+  categoria: "ADULTO" | "INFANTIL";
+}) {
+  const medidas = variacoes.filter((v) =>
+    v.categoria === categoria && v.altura_cm !== null && v.largura_cm !== null,
+  );
+  if (medidas.length === 0) return null;
+
   return (
     <section className="tabela-medidas" aria-labelledby="titulo-medidas">
       <div className="tabela-medidas-intro">
         <p className="flow-kicker">Escolha com mais segurança</p>
-        <h2 id="titulo-medidas" className="flow-titulo-secao">Tabela de medidas</h2>
-        <p>Medidas em centímetros da camiseta convencional. A altura vai da gola até a barra; a largura é medida de uma lateral à outra, com a peça estendida.</p>
+        <h2 id="titulo-medidas" className="flow-titulo-secao">Medidas · {categoria === "INFANTIL" ? "Infantil" : "Adulto"}</h2>
+        <p>Medidas em centímetros da peça estendida. A altura vai da gola até a barra; a largura é medida de uma lateral à outra.</p>
       </div>
       <div className="tabela-medidas-rolagem">
         <table>
@@ -23,7 +26,7 @@ export function TabelaMedidas() {
             <tr><th scope="col">Tamanho</th><th scope="col">Altura</th><th scope="col">Largura</th></tr>
           </thead>
           <tbody>
-            {medidas.map((item) => <tr key={item.tamanho}><th scope="row">{item.tamanho}</th><td>{item.altura} cm</td><td>{item.largura} cm</td></tr>)}
+            {medidas.map((item) => <tr key={item.id}><th scope="row">{item.nome}</th><td>{formatarMedida(item.altura_cm)}</td><td>{formatarMedida(item.largura_cm)}</td></tr>)}
           </tbody>
         </table>
       </div>

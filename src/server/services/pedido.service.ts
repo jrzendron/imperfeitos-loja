@@ -171,7 +171,9 @@ export async function criarPedido(
              (id, pedido_id, produto_variacao_id, produto_nome_snapshot,
               variacao_nome_snapshot, quantidade, valor_unitario_centavos,
               subtotal_centavos, created_at)
-           SELECT ?1, ?2, v.id, p.nome, v.nome, ?3, v.valor_centavos,
+           SELECT ?1, ?2, v.id, p.nome,
+                  CASE v.categoria WHEN 'INFANTIL' THEN 'Infantil' ELSE 'Adulto' END || ' · ' || v.nome,
+                  ?3, v.valor_centavos,
                   v.valor_centavos * ?3, ?4
              FROM produto_variacoes v
              JOIN produtos p ON p.id = v.produto_id

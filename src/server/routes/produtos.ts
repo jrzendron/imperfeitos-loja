@@ -11,6 +11,9 @@ interface LinhaCatalogo {
   variacao_id: string;
   sku: string;
   variacao_nome: string;
+  categoria: "ADULTO" | "INFANTIL";
+  altura_cm: number | null;
+  largura_cm: number | null;
   valor_centavos: number;
   ordem: number;
   disponivel: number;
@@ -29,6 +32,9 @@ const SQL_CATALOGO = `
          v.id   AS variacao_id,
          v.sku,
          v.nome AS variacao_nome,
+         v.categoria,
+         v.altura_cm,
+         v.largura_cm,
          v.valor_centavos,
          v.ordem,
          MAX(0, COALESCE(e.quantidade_fisica, 0) - COALESCE(e.quantidade_reservada, 0)) AS disponivel
@@ -36,7 +42,7 @@ const SQL_CATALOGO = `
     JOIN produto_variacoes v ON v.produto_id = p.id AND v.ativo = 1
     LEFT JOIN estoque e      ON e.produto_variacao_id = v.id
    WHERE p.ativo = 1 %FILTRO%
-   ORDER BY p.nome, v.ordem
+   ORDER BY p.nome, CASE v.categoria WHEN 'ADULTO' THEN 0 ELSE 1 END, v.ordem, v.nome
 `;
 
 interface LinhaImagem {
@@ -92,6 +98,9 @@ function agrupar(linhas: LinhaCatalogo[]): ProdutoPublico[] {
       id: l.variacao_id,
       sku: l.sku,
       nome: l.variacao_nome,
+      categoria: l.categoria,
+      altura_cm: l.altura_cm,
+      largura_cm: l.largura_cm,
       valor_centavos: l.valor_centavos,
       ordem: l.ordem,
       disponivel: l.disponivel,

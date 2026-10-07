@@ -30,7 +30,7 @@ export function CarrinhoPagina() {
             <div className="min-w-40 flex-1">
               <p className="font-semibold">{item.produto_nome}</p>
               <p className="text-sm text-suave">
-                Tamanho {item.variacao_nome} · {formatarBRL(item.valor_centavos)}
+                {item.variacao_nome} · {formatarBRL(item.valor_centavos)}
               </p>
             </div>
 

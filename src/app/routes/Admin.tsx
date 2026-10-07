@@ -12,7 +12,7 @@ type Aba = "pedidos" | "produtos" | "estoque" | "retirada" | "pagamentos";
 const ABAS: { id: Aba; titulo: string; curto: string; descricao: string }[] = [
   { id: "pedidos", titulo: "Gestão de pedidos", curto: "Pedidos", descricao: "Compradores, pagamentos e entregas" },
   { id: "estoque", titulo: "Controle de estoque", curto: "Estoque", descricao: "Peças físicas, reservadas e disponíveis" },
-  { id: "produtos", titulo: "Produtos da loja", curto: "Produtos", descricao: "Fotos, tamanhos, preços e publicação" },
+  { id: "produtos", titulo: "Camiseta da loja", curto: "Camiseta", descricao: "Fotos, categorias, tamanhos, preços e medidas" },
   { id: "retirada", titulo: "Retirada de pedidos", curto: "Retirada", descricao: "Leitura do QR e confirmação da entrega" },
   { id: "pagamentos", titulo: "Conta de pagamentos", curto: "Pagamentos", descricao: "Conta recebedora e credenciais do Mercado Pago" },
 ];
@@ -358,6 +358,7 @@ function InfoPedido({ rotulo, valor, complemento }: { rotulo: string; valor: str
 interface LinhaEstoque {
   id: string;
   nome: string;
+  categoria: "ADULTO" | "INFANTIL";
   sku: string;
   produto_id: string;
   produto_nome: string;
@@ -388,6 +389,9 @@ function AbaEstoque() {
   const [criandoTamanho, setCriandoTamanho] = useState(false);
   const [produtoId, setProdutoId] = useState("");
   const [novoTamanho, setNovoTamanho] = useState("");
+  const [novaCategoria, setNovaCategoria] = useState<"ADULTO" | "INFANTIL">("ADULTO");
+  const [novaAltura, setNovaAltura] = useState("");
+  const [novaLargura, setNovaLargura] = useState("");
   const [novoSku, setNovoSku] = useState("");
   const [novoPreco, setNovoPreco] = useState("");
   const [estoqueInicial, setEstoqueInicial] = useState("");
@@ -430,8 +434,10 @@ function AbaEstoque() {
     e.preventDefault();
     const centavos = lerCentavos(novoPreco);
     const quantidade = Number(estoqueInicial || 0);
-    if (!produtoId || !novoTamanho.trim() || centavos === null) {
-      setAviso({ tipo: "erro", texto: "Informe o produto, o tamanho e um preço válido." });
+    const altura = Number(novaAltura.replace(",", "."));
+    const largura = Number(novaLargura.replace(",", "."));
+    if (!produtoId || !novoTamanho.trim() || centavos === null || !Number.isFinite(altura) || !Number.isFinite(largura) || altura <= 0 || largura <= 0 || altura > 300 || largura > 300) {
+      setAviso({ tipo: "erro", texto: "Informe tamanho, preço, altura e largura válidos." });
       return;
     }
     if (!Number.isInteger(quantidade) || quantidade < 0) {
@@ -444,13 +450,18 @@ function AbaEstoque() {
     try {
       await api.admin.criarVariacao(produtoId, {
         nome: novoTamanho.trim().toUpperCase(),
+        categoria: novaCategoria,
+        altura_cm: altura,
+        largura_cm: largura,
         ...(novoSku.trim() ? { sku: novoSku.trim().toUpperCase() } : {}),
         valor_centavos: centavos,
         estoque_inicial: quantidade,
-        ordem: (linhas ?? []).filter((linha) => linha.produto_id === produtoId).length + 1,
+        ordem: (linhas ?? []).filter((linha) => linha.produto_id === produtoId && linha.categoria === novaCategoria).length,
       });
       setCriandoTamanho(false);
       setNovoTamanho("");
+      setNovaAltura("");
+      setNovaLargura("");
       setNovoSku("");
       setNovoPreco("");
       setEstoqueInicial("");
@@ -474,7 +485,7 @@ function AbaEstoque() {
     { fisico: 0, reservado: 0, disponivel: 0 },
   );
   const linhasFiltradas = linhas.filter((linha) =>
-    `${linha.produto_nome} ${linha.nome} ${linha.sku}`.toLowerCase().includes(busca.toLowerCase()),
+    `${linha.produto_nome} ${linha.categoria} ${linha.nome} ${linha.sku}`.toLowerCase().includes(busca.toLowerCase()),
   );
 
   return (
@@ -492,11 +503,7 @@ function AbaEstoque() {
         {!criandoTamanho ? (
           <button
             className="btn-primario w-full sm:w-auto"
-            onClick={() => {
-              setCriandoTamanho(true);
-              const referencia = linhas.find((linha) => linha.produto_id === (produtoId || produtos[0]?.id));
-              if (referencia && !novoPreco) setNovoPreco((referencia.valor_centavos / 100).toFixed(2).replace(".", ","));
-            }}
+            onClick={() => setCriandoTamanho(true)}
           >
             + Novo tamanho
           </button>
@@ -509,7 +516,7 @@ function AbaEstoque() {
               </div>
               <button type="button" className="text-2xl text-suave" onClick={() => setCriandoTamanho(false)} aria-label="Fechar">×</button>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label>
                 <span className="rotulo">Produto</span>
                 <select className="campo" value={produtoId} onChange={(e) => setProdutoId(e.target.value)} required>
@@ -517,8 +524,22 @@ function AbaEstoque() {
                 </select>
               </label>
               <label>
+                <span className="rotulo">Categoria</span>
+                <select className="campo" value={novaCategoria} onChange={(e) => setNovaCategoria(e.target.value as "ADULTO" | "INFANTIL")}>
+                  <option value="ADULTO">Adulto</option><option value="INFANTIL">Infantil</option>
+                </select>
+              </label>
+              <label>
                 <span className="rotulo">Tamanho</span>
                 <input className="campo" value={novoTamanho} onChange={(e) => setNovoTamanho(e.target.value)} placeholder="Ex.: G2" maxLength={20} required autoFocus />
+              </label>
+              <label>
+                <span className="rotulo">Altura (cm)</span>
+                <input className="campo" value={novaAltura} onChange={(e) => setNovaAltura(e.target.value)} placeholder="Ex.: 45" inputMode="decimal" required />
+              </label>
+              <label>
+                <span className="rotulo">Largura (cm)</span>
+                <input className="campo" value={novaLargura} onChange={(e) => setNovaLargura(e.target.value)} placeholder="Ex.: 43,5" inputMode="decimal" required />
               </label>
               <label>
                 <span className="rotulo">Preço</span>
@@ -551,6 +572,7 @@ function AbaEstoque() {
           <li key={l.id} className="cartao p-4">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-lg font-bold">{l.nome}</span>
+              <span className="etiqueta bg-marca-100 text-marca-700">{l.categoria === "INFANTIL" ? "Infantil" : "Adulto"}</span>
               <span className="text-sm text-suave">{l.produto_nome}</span>
               <span className="ml-auto font-semibold tabular-nums">
                 {formatarBRL(l.valor_centavos)}

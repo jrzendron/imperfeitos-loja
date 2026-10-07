@@ -9,6 +9,9 @@ interface Variacao {
   id: string;
   sku: string;
   nome: string;
+  categoria: "ADULTO" | "INFANTIL";
+  altura_cm: number | null;
+  largura_cm: number | null;
   valor_centavos: number;
   ativo: number;
   ordem: number;
@@ -42,6 +45,7 @@ function paraCentavos(texto: string): number | null {
   return Math.round(n * 100);
 }
 const paraReais = (centavos: number) => (centavos / 100).toFixed(2).replace(".", ",");
+const paraMedida = (texto: string) => Number(texto.trim().replace(",", "."));
 
 export function AdminProdutos() {
   const [produtos, setProdutos] = useState<Produto[] | null>(null);
@@ -72,9 +76,9 @@ export function AdminProdutos() {
         </div>
       )}
 
-      {!criando ? (
+      {produtos.length === 0 && (!criando ? (
         <button className="btn-primario w-full" onClick={() => setCriando(true)}>
-          Novo produto
+          Cadastrar a camiseta
         </button>
       ) : (
         <FormularioProduto
@@ -87,7 +91,7 @@ export function AdminProdutos() {
           }}
           aoFalhar={(m) => feedback("erro", m)}
         />
-      )}
+      ))}
 
       {produtos.length === 0 && (
         <div className="mt-4">
@@ -168,7 +172,7 @@ function FormularioProduto({
           placeholder="Malha penteada 30.1, gola careca. Modelagem unissex."
         />
         <p className="mt-1 text-xs text-suave">
-          Vale escrever aqui a tabela de medidas — é o que mais reduz troca de tamanho.
+          As medidas são cadastradas em cada tamanho, logo abaixo.
         </p>
       </div>
 
@@ -302,27 +306,37 @@ function Tamanhos({
   aoMudar: () => Promise<void>;
   aoAvisar: (tipo: "erro" | "sucesso", texto: string) => void;
 }) {
+  const [categoria, setCategoria] = useState<"ADULTO" | "INFANTIL">("ADULTO");
   const [novoNome, setNovoNome] = useState("");
   const [novoValor, setNovoValor] = useState("");
   const [novoEstoque, setNovoEstoque] = useState("");
+  const [novaAltura, setNovaAltura] = useState("");
+  const [novaLargura, setNovaLargura] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   async function adicionar() {
     const centavos = paraCentavos(novoValor);
-    if (!novoNome.trim() || centavos === null) {
-      return aoAvisar("erro", "Informe o tamanho e um valor válido.");
+    const altura = paraMedida(novaAltura);
+    const largura = paraMedida(novaLargura);
+    if (!novoNome.trim() || centavos === null || !Number.isFinite(altura) || !Number.isFinite(largura) || altura <= 0 || largura <= 0 || altura > 300 || largura > 300) {
+      return aoAvisar("erro", "Informe tamanho, preço, altura e largura válidos.");
     }
     setSalvando(true);
     try {
       await api.admin.criarVariacao(produto.id, {
         nome: novoNome.trim().toUpperCase(),
+        categoria,
+        altura_cm: altura,
+        largura_cm: largura,
         valor_centavos: centavos,
-        ordem: produto.variacoes.length + 1,
+        ordem: produto.variacoes.filter((v) => v.categoria === categoria).length,
         estoque_inicial: Number(novoEstoque) || 0,
       });
       setNovoNome("");
       setNovoValor("");
       setNovoEstoque("");
+      setNovaAltura("");
+      setNovaLargura("");
       aoAvisar("sucesso", "Tamanho adicionado.");
       await aoMudar();
     } catch (e) {
@@ -334,18 +348,30 @@ function Tamanhos({
 
   return (
     <section className="mt-4 border-t border-linha pt-4">
-      <h4 className="text-sm font-bold uppercase tracking-wide text-suave">Tamanhos</h4>
+      <h4 className="text-sm font-bold uppercase tracking-wide text-suave">Tamanhos e medidas</h4>
+      <div className="mt-3 flex gap-2" role="tablist" aria-label="Categoria dos tamanhos">
+        {(["ADULTO", "INFANTIL"] as const).map((opcao) => (
+          <button key={opcao} type="button" role="tab" aria-selected={categoria === opcao}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold ${categoria === opcao ? "border-marca-600 bg-marca-600 text-white" : "border-linha bg-white"}`}
+            onClick={() => setCategoria(opcao)}>
+            {opcao === "ADULTO" ? "Adulto" : "Infantil"}
+          </button>
+        ))}
+      </div>
 
       <ul className="mt-2 divide-y divide-linha">
-        {produto.variacoes.map((v) => (
+        {produto.variacoes.filter((v) => v.categoria === categoria).map((v) => (
           <LinhaTamanho key={v.id} variacao={v} aoMudar={aoMudar} aoAvisar={aoAvisar} />
         ))}
       </ul>
+      {!produto.variacoes.some((v) => v.categoria === categoria) && (
+        <p className="mt-3 text-sm text-suave">Nenhum tamanho {categoria === "INFANTIL" ? "infantil" : "adulto"} cadastrado.</p>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <input
           className="campo w-20"
-          placeholder="GG"
+          placeholder={categoria === "INFANTIL" ? "02" : "GG"}
           value={novoNome}
           onChange={(e) => setNovoNome(e.target.value)}
           aria-label="Tamanho"
@@ -360,6 +386,22 @@ function Tamanhos({
         />
         <input
           className="campo w-24"
+          placeholder="Altura cm"
+          inputMode="decimal"
+          value={novaAltura}
+          onChange={(e) => setNovaAltura(e.target.value)}
+          aria-label="Altura em centímetros"
+        />
+        <input
+          className="campo w-24"
+          placeholder="Largura cm"
+          inputMode="decimal"
+          value={novaLargura}
+          onChange={(e) => setNovaLargura(e.target.value)}
+          aria-label="Largura em centímetros"
+        />
+        <input
+          className="campo w-24"
           placeholder="qtd."
           inputMode="numeric"
           value={novoEstoque}
@@ -370,7 +412,7 @@ function Tamanhos({
           Adicionar
         </button>
       </div>
-      <p className="mt-1.5 text-xs text-suave">Preço em reais, com vírgula. A quantidade entra como carga inicial.</p>
+      <p className="mt-1.5 text-xs text-suave">Preço em reais. Altura e largura em centímetros, aceitando vírgula. A quantidade entra como carga inicial.</p>
     </section>
   );
 }
@@ -386,14 +428,25 @@ function LinhaTamanho({
 }) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(paraReais(variacao.valor_centavos));
+  const [nome, setNome] = useState(variacao.nome);
+  const [categoria, setCategoria] = useState(variacao.categoria);
+  const [altura, setAltura] = useState(variacao.altura_cm?.toString().replace(".", ",") ?? "");
+  const [largura, setLargura] = useState(variacao.largura_cm?.toString().replace(".", ",") ?? "");
 
-  async function salvarPreco() {
+  async function salvarTamanho() {
     const centavos = paraCentavos(valor);
-    if (centavos === null) return aoAvisar("erro", "Valor inválido.");
+    const alturaCm = paraMedida(altura);
+    const larguraCm = paraMedida(largura);
+    if (!nome.trim() || centavos === null || !Number.isFinite(alturaCm) || !Number.isFinite(larguraCm) || alturaCm <= 0 || larguraCm <= 0 || alturaCm > 300 || larguraCm > 300) {
+      return aoAvisar("erro", "Informe tamanho, preço, altura e largura válidos.");
+    }
     try {
-      await api.admin.editarVariacao(variacao.id, { valor_centavos: centavos });
+      await api.admin.editarVariacao(variacao.id, {
+        nome: nome.trim().toUpperCase(), categoria, valor_centavos: centavos,
+        altura_cm: alturaCm, largura_cm: larguraCm,
+      });
       setEditando(false);
-      aoAvisar("sucesso", "Preço atualizado. Pedidos antigos mantêm o valor que tinham.");
+      aoAvisar("sucesso", "Tamanho e medidas atualizados. Pedidos antigos mantêm os dados da compra.");
       await aoMudar();
     } catch (e) {
       aoAvisar("erro", e instanceof ErroApi ? e.message : "Falha ao salvar.");
@@ -414,29 +467,27 @@ function LinhaTamanho({
       <span className="min-w-10 flex-none text-lg font-bold">{variacao.nome}</span>
 
       {editando ? (
-        <>
-          <input
-            className="campo w-28 !py-1.5"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            inputMode="decimal"
-            autoFocus
-          />
-          <button className="btn-primario !px-3 !py-1.5 !text-sm" onClick={salvarPreco}>
+        <div className="flex w-full flex-wrap gap-2">
+          <input className="campo w-20 !py-1.5" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do tamanho" autoFocus />
+          <select className="campo w-28 !py-1.5" value={categoria} onChange={(e) => setCategoria(e.target.value as "ADULTO" | "INFANTIL")} aria-label="Categoria">
+            <option value="ADULTO">Adulto</option><option value="INFANTIL">Infantil</option>
+          </select>
+          <input className="campo w-28 !py-1.5" value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" aria-label="Preço em reais" />
+          <input className="campo w-28 !py-1.5" value={altura} onChange={(e) => setAltura(e.target.value)} inputMode="decimal" aria-label="Altura em centímetros" placeholder="Altura cm" />
+          <input className="campo w-28 !py-1.5" value={largura} onChange={(e) => setLargura(e.target.value)} inputMode="decimal" aria-label="Largura em centímetros" placeholder="Largura cm" />
+          <button className="btn-primario !px-3 !py-1.5 !text-sm" onClick={salvarTamanho}>
             Salvar
           </button>
           <button className="btn-secundario !px-3 !py-1.5 !text-sm" onClick={() => setEditando(false)}>
             Cancelar
           </button>
-        </>
+        </div>
       ) : (
-        <button
-          className="font-semibold tabular-nums underline decoration-linha underline-offset-4 hover:decoration-marca-500"
-          onClick={() => setEditando(true)}
-          title="Clique para mudar o preço"
-        >
-          {formatarBRL(variacao.valor_centavos)}
-        </button>
+        <>
+          <span className="font-semibold tabular-nums">{formatarBRL(variacao.valor_centavos)}</span>
+          <span className="text-sm text-suave">{variacao.altura_cm ?? "—"} × {variacao.largura_cm ?? "—"} cm</span>
+          <button className="text-sm font-semibold underline" onClick={() => setEditando(true)}>Editar</button>
+        </>
       )}
 
       <span className="text-sm tabular-nums text-suave">

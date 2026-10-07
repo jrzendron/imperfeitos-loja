@@ -14,6 +14,7 @@ export function Produto() {
   const [produto, setProduto] = useState<ProdutoPublico | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
+  const [categoria, setCategoria] = useState<"ADULTO" | "INFANTIL">("ADULTO");
   const [fotoAtiva, setFotoAtiva] = useState(0);
   const [zoomAberto, setZoomAberto] = useState(false);
   const [nivelZoom, setNivelZoom] = useState(1);
@@ -65,7 +66,7 @@ export function Produto() {
       selecionadas.map((v) => ({
         produto_variacao_id: v.id,
         produto_nome: produto.nome,
-        variacao_nome: v.nome,
+        variacao_nome: `${v.categoria === "INFANTIL" ? "Infantil" : "Adulto"} · ${v.nome}`,
         valor_centavos: v.valor_centavos,
         quantidade: quantidades[v.id] ?? 0,
       })),
@@ -144,10 +145,20 @@ export function Produto() {
           <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight">{produto.nome}</h1>
           {produto.descricao && <p className="mt-3 whitespace-pre-line text-suave">{produto.descricao}</p>}
 
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-2">
+      <div className="mt-7 flex flex-wrap gap-2" role="tablist" aria-label="Categoria da camiseta">
+        {(["ADULTO", "INFANTIL"] as const).map((opcao) => (
+          <button key={opcao} type="button" role="tab" aria-selected={categoria === opcao}
+            className={`rounded-full border px-5 py-2.5 text-sm font-bold transition ${categoria === opcao ? "border-marca-600 bg-marca-600 text-white" : "border-linha bg-white hover:border-marca-500"}`}
+            onClick={() => setCategoria(opcao)}>
+            {opcao === "ADULTO" ? "Adulto" : "Infantil"}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-wide text-suave">Tamanhos e quantidades</h2>
-          <p className="mt-1 text-sm text-suave">Use os botões para escolher uma ou mais peças.</p>
+          <p className="mt-1 text-sm text-suave">Escolha peças adultas e infantis; sua seleção permanece ao trocar de categoria.</p>
         </div>
         {totalPecas > 0 && (
           <span className="rounded-full bg-marca-100 px-3 py-1 text-sm font-bold text-marca-700">
@@ -157,7 +168,7 @@ export function Produto() {
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {produto.variacoes.map((v) => {
+        {produto.variacoes.filter((v) => v.categoria === categoria).map((v) => {
           const esgotado = v.disponivel <= 0;
           const quantidade = quantidades[v.id] ?? 0;
           const selecionado = quantidade > 0;
@@ -177,7 +188,7 @@ export function Produto() {
               </div>
 
               {!esgotado && (
-                <div className="flex items-center gap-1.5" aria-label={`Quantidade do tamanho ${v.nome}`}>
+                <div className="flex items-center gap-1.5" aria-label={`Quantidade do tamanho ${v.nome} ${categoria === "INFANTIL" ? "infantil" : "adulto"}`}>
                   <button
                     type="button"
                     className="btn-secundario h-11 w-11 !px-0 text-xl"
@@ -204,6 +215,10 @@ export function Produto() {
         })}
       </div>
 
+      {produto.variacoes.every((v) => v.categoria !== categoria) && (
+        <Aviso>Nenhum tamanho {categoria === "INFANTIL" ? "infantil" : "adulto"} cadastrado ainda.</Aviso>
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-4 rounded-xl border border-linha bg-white p-4 sm:p-5">
         <div className="min-w-36 flex-1">
           <p className="text-sm text-suave">Total selecionado</p>
@@ -213,7 +228,7 @@ export function Produto() {
           Adicionar {totalPecas > 0 ? `${totalPecas} ${totalPecas === 1 ? "peça" : "peças"}` : "ao carrinho"}
         </button>
       </div>
-      <div className="mt-8"><TabelaMedidas /></div>
+      <div className="mt-8"><TabelaMedidas variacoes={produto.variacoes} categoria={categoria} /></div>
         </section>
       </div>
 

@@ -71,7 +71,7 @@ adminRouter.get("/dashboard", async (c) => {
   ).first<{ total: number }>();
 
   const { results: estoque } = await c.env.DB.prepare(
-    `SELECT v.id, v.nome, v.sku, v.valor_centavos,
+    `SELECT v.id, v.nome, v.categoria, v.sku, v.valor_centavos,
             p.id AS produto_id, p.nome AS produto_nome,
             e.quantidade_fisica, e.quantidade_reservada,
             MAX(0, e.quantidade_fisica - e.quantidade_reservada) AS disponivel
@@ -241,14 +241,15 @@ adminRouter.get("/produtos", async (c) => {
   ).all<Record<string, unknown>>();
 
   const { results: variacoes } = await c.env.DB.prepare(
-    `SELECT v.id, v.produto_id, v.sku, v.nome, v.valor_centavos, v.ativo, v.ordem,
+    `SELECT v.id, v.produto_id, v.sku, v.nome, v.categoria, v.altura_cm, v.largura_cm,
+            v.valor_centavos, v.ativo, v.ordem,
             COALESCE(e.quantidade_fisica, 0)    AS quantidade_fisica,
             COALESCE(e.quantidade_reservada, 0) AS quantidade_reservada,
             MAX(0, COALESCE(e.quantidade_fisica, 0) - COALESCE(e.quantidade_reservada, 0)) AS disponivel,
             (SELECT COUNT(*) FROM pedido_itens i WHERE i.produto_variacao_id = v.id) AS em_pedidos
        FROM produto_variacoes v
        LEFT JOIN estoque e ON e.produto_variacao_id = v.id
-      ORDER BY v.ordem, v.nome LIMIT 500`,
+      ORDER BY CASE v.categoria WHEN 'ADULTO' THEN 0 ELSE 1 END, v.ordem, v.nome LIMIT 500`,
   ).all<Record<string, unknown>>();
 
   const { results: imagens } = await c.env.DB.prepare(

@@ -8,6 +8,8 @@ const TIPOS_ACEITOS = ["image/webp", "image/jpeg", "image/png", "image/avif"];
 const TAMANHO_MAXIMO = 3 * 1024 * 1024; // 3 MB por foto, já redimensionada pela tela
 
 export async function criarProduto(db: D1Database, entrada: ProdutoInput, adminEmail: string) {
+  const existente = await db.prepare("SELECT id FROM produtos LIMIT 1").first();
+  if (existente) throw erro(409, "PRODUTO_UNICO", "A loja permite apenas uma camiseta. Edite o produto existente.");
   const ts = agora();
   const id = novoId("prod");
   const slug = entrada.slug?.trim() || gerarSlug(entrada.nome);
@@ -23,9 +25,7 @@ export async function criarProduto(db: D1Database, entrada: ProdutoInput, adminE
       .bind(id, slug, entrada.nome, entrada.descricao || null, entrada.ativo === false ? 0 : 1, ts)
       .run();
   } catch (e) {
-    if (violouUnique(e)) {
-      throw erro(409, "SLUG_EM_USO", `Já existe um produto no endereço "${slug}". Escolha outro.`);
-    }
+    if (violouUnique(e)) throw erro(409, "PRODUTO_UNICO", "A loja permite apenas uma camiseta.");
     throw e;
   }
 
@@ -104,20 +104,24 @@ export async function criarVariacao(
   const ts = agora();
   const id = novoId("var");
   const inicial = entrada.estoque_inicial ?? 0;
-  const sku = entrada.sku?.trim() || `${produtoId.slice(-6)}-${gerarSlug(entrada.nome) || "x"}`.toUpperCase();
+  const sku = entrada.sku?.trim() || `${produtoId.slice(-6)}-${entrada.categoria}-${gerarSlug(entrada.nome) || "x"}`.toUpperCase();
 
   const stmts: D1PreparedStatement[] = [
     db
       .prepare(
         `INSERT INTO produto_variacoes
-           (id, produto_id, sku, nome, valor_centavos, ativo, ordem, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)`,
+           (id, produto_id, sku, nome, categoria, altura_cm, largura_cm,
+            valor_centavos, ativo, ordem, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)`,
       )
       .bind(
         id,
         produtoId,
         sku,
         entrada.nome,
+        entrada.categoria,
+        entrada.altura_cm ?? null,
+        entrada.largura_cm ?? null,
         entrada.valor_centavos,
         entrada.ativo === false ? 0 : 1,
         entrada.ordem ?? 0,
@@ -146,7 +150,7 @@ export async function criarVariacao(
   try {
     await db.batch(stmts);
   } catch (e) {
-    if (violouUnique(e)) throw erro(409, "SKU_EM_USO", `O código "${sku}" já está em uso.`);
+    if (violouUnique(e)) throw erro(409, "TAMANHO_EM_USO", "Esse tamanho ou SKU já existe nessa categoria.");
     throw e;
   }
 
@@ -156,7 +160,7 @@ export async function criarVariacao(
     action: "VARIACAO_CRIADA",
     entity_type: "produto_variacao",
     entity_id: id,
-    metadata: { produto_id: produtoId, nome: entrada.nome, valor_centavos: entrada.valor_centavos },
+    metadata: { produto_id: produtoId, nome: entrada.nome, categoria: entrada.categoria, valor_centavos: entrada.valor_centavos },
   });
 
   return { id, sku };
@@ -182,6 +186,9 @@ export async function editarVariacao(
   };
 
   if (entrada.nome !== undefined) set("nome", entrada.nome);
+  if (entrada.categoria !== undefined) set("categoria", entrada.categoria);
+  if (entrada.altura_cm !== undefined) set("altura_cm", entrada.altura_cm);
+  if (entrada.largura_cm !== undefined) set("largura_cm", entrada.largura_cm);
   if (entrada.sku !== undefined) set("sku", entrada.sku);
   if (entrada.valor_centavos !== undefined) set("valor_centavos", entrada.valor_centavos);
   if (entrada.ordem !== undefined) set("ordem", entrada.ordem);
@@ -191,10 +198,15 @@ export async function editarVariacao(
   set("updated_at", agora());
   valores.push(id);
 
-  await db
-    .prepare(`UPDATE produto_variacoes SET ${campos.join(", ")} WHERE id = ?${valores.length}`)
-    .bind(...valores)
-    .run();
+  try {
+    await db
+      .prepare(`UPDATE produto_variacoes SET ${campos.join(", ")} WHERE id = ?${valores.length}`)
+      .bind(...valores)
+      .run();
+  } catch (e) {
+    if (violouUnique(e)) throw erro(409, "TAMANHO_EM_USO", "Esse tamanho ou SKU já existe nessa categoria.");
+    throw e;
+  }
 
   // Mudar preço é a alteração mais sensível do painel: pedidos antigos
   // guardam o valor em snapshot, então o histórico não muda — mas quem

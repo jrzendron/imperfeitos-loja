@@ -124,8 +124,10 @@ export function Catalogo() {
                       <h3>{produto.nome}</h3>
                       <p className="flow-produto-preco">{menor !== null ? `A partir de ${formatarBRL(menor)}` : "Preço em breve"}</p>
                       <p className="flow-produto-texto">Escolha mais de um tamanho no mesmo pedido.</p>
-                      <div className="flow-tamanhos" aria-label="Tamanhos cadastrados">
-                        {produto.variacoes.map((v) => <span key={v.id} className={v.disponivel === 0 ? "esgotado" : ""}>{v.nome}</span>)}
+                      <div className="flow-tamanhos" aria-label="Categorias cadastradas">
+                        {(["ADULTO", "INFANTIL"] as const).filter((categoria) => produto.variacoes.some((v) => v.categoria === categoria)).map((categoria) => (
+                          <span key={categoria}>{categoria === "ADULTO" ? "Adulto" : "Infantil"}</span>
+                        ))}
                       </div>
                       <p className="flow-produto-estoque">{total > 0 ? `${total} peças disponíveis` : "Esgotado"}</p>
                       <span className="flow-botao">Escolher tamanhos <span aria-hidden="true">↗</span></span>

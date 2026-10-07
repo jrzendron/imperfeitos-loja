@@ -135,6 +135,9 @@ export const produtoSchema = z
 export const variacaoSchema = z
   .object({
     nome: z.string().trim().min(1, "Informe o tamanho.").max(20),
+    categoria: z.enum(["ADULTO", "INFANTIL"]),
+    altura_cm: z.number().positive().max(300),
+    largura_cm: z.number().positive().max(300),
     sku: z.string().trim().min(1).max(60).optional(),
     // Em CENTAVOS. A tela converte; o servidor nunca vê "45,90".
     valor_centavos: z
