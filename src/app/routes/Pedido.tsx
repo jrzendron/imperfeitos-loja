@@ -50,10 +50,11 @@ export function Pedido() {
       setPedido((atual) => (atual ? { ...atual, pagamento } : atual));
     } catch (e) {
       setErroPix(e instanceof ErroApi ? e.message : "Não foi possível gerar o Pix.");
+      await carregar();
     } finally {
       setCriandoPix(false);
     }
-  }, [token]);
+  }, [token, carregar]);
 
   async function cancelar() {
     if (!window.confirm("Cancelar este pedido e devolver as peças ao estoque?")) return;
@@ -158,7 +159,7 @@ export function Pedido() {
       {aguardando && pedido.pagamento?.status === "PENDING" && !pedido.pagamento.pix_copia_cola && (
         <div className="mt-5">
           <Aviso tipo="alerta" titulo="Pagamento em processamento">
-            Aguarde a confirmação do cartão. Esta página será atualizada automaticamente.
+            Ainda não há um código Pix para pagar. Aguarde a atualização desta página antes de tentar outro pagamento.
           </Aviso>
         </div>
       )}

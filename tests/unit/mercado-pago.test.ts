@@ -89,5 +89,35 @@ describe("Mercado Pago", () => {
     expect(comandos.some((sql) => sql.includes("status = 'REJECTED'") && sql.includes("pix_copia_cola = NULL"))).toBe(true);
     expect(batch).not.toHaveBeenCalled();
   });
+
+  it("registra como recusada uma order Pix que o Mercado Pago devolveu como failed", async () => {
+    const comandos: Array<{ sql: string; valores: unknown[] }> = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...valores: unknown[]) => ({
+          first: async () => sql.includes("FROM pedidos p")
+            ? { id: "ped-1", numero: "PED-000001", status: "AGUARDANDO_PAGAMENTO", valor_total_centavos: 100, expires_at: null, email: "comprador@example.com" }
+            : sql.includes("SELECT conta_pagamento_id FROM pagamentos") ? { conta_pagamento_id: null } : null,
+          run: async () => { comandos.push({ sql, valores }); return { meta: { changes: 1 } }; },
+        }),
+        first: async () => null,
+      }),
+    } as unknown as D1Database;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      errors: [{ code: "failed", details: ["PAY-1: processing_error"] }],
+      data: {
+        id: "ORD-FAILED",
+        status: "failed",
+        transactions: { payments: [{ status: "failed", status_detail: "processing_error" }] },
+      },
+    }), { status: 402 })));
+
+    await expect(criarPix(db, { APP_ENV: "production", MERCADO_PAGO_ACCESS_TOKEN: "token-falso" } as Env, "token"))
+      .rejects.toMatchObject({ codigo: "ERRO_MERCADO_PAGO" });
+    expect(comandos).toContainEqual(expect.objectContaining({
+      sql: expect.stringContaining("status = 'REJECTED'"),
+      valores: ["ORD-FAILED", expect.any(String), "ped-1", "pix-ped-1"],
+    }));
+  });
 });
 

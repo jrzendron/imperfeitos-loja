@@ -1,7 +1,7 @@
 import type { PedidoPublico } from "../../shared/types";
 import type { PagamentoCartaoInput } from "../../shared/schemas";
 import { sha256 } from "../utils/crypto";
-import { erro, violouUnique } from "../utils/http";
+import { ErroDeNegocio, erro, violouUnique } from "../utils/http";
 import { agora, novoId, somarMinutos } from "../utils/ids";
 import { registrarPagamento } from "./pedido.service";
 import { credenciaisPagamento, exigirContaAtivaParaVendas, type CredenciaisPagamento } from "./conta-pagamento.service";
@@ -48,6 +48,18 @@ function dinheiroMercadoPago(centavos: number): string {
   return (centavos / 100).toFixed(2);
 }
 
+interface RespostaErroMercadoPago {
+  errors?: Array<{ code?: string; details?: string[] }>;
+  data?: OrdemMercadoPago;
+}
+
+class ErroRespostaMercadoPago extends ErroDeNegocio {
+  constructor(readonly httpStatus: number, readonly resposta: RespostaErroMercadoPago) {
+    const codigoMp = resposta.errors?.[0]?.code ?? "desconhecido";
+    super(502, "ERRO_MERCADO_PAGO", `O Mercado Pago não processou o pagamento (${codigoMp}). Tente novamente ou escolha outra forma de pagamento.`);
+  }
+}
+
 async function chamarMercadoPago(conta: CredenciaisPagamento, caminho: string, init?: RequestInit) {
   if (!conta.accessToken) {
     throw erro(503, "PIX_NAO_CONFIGURADO", "O Pix ainda não foi configurado nesta loja.");
@@ -72,11 +84,7 @@ async function chamarMercadoPago(conta: CredenciaisPagamento, caminho: string, i
 
   if (!resposta.ok) {
     console.error("Mercado Pago respondeu com erro", resposta.status, dados);
-    throw erro(
-      502,
-      "ERRO_MERCADO_PAGO",
-      "Não foi possível gerar o Pix agora. Tente novamente em alguns instantes.",
-    );
+    throw new ErroRespostaMercadoPago(resposta.status, dados as RespostaErroMercadoPago);
   }
   return dados as OrdemMercadoPago;
 }
@@ -132,7 +140,11 @@ export async function criarPix(
 
   const ts = agora();
   const conta = await credenciaisPagamento(db, env);
-  const idempotencia = `pix-${pedido.id}`;
+  // Uma tentativa recusada pelo provedor precisa de uma nova chave. Repetir a
+  // chave anterior apenas devolve a mesma order que já falhou.
+  const idempotencia = existente && ["REJECTED", "CANCELLED"].includes(existente.status)
+    ? `pix-${pedido.id}-${crypto.randomUUID()}`
+    : `pix-${pedido.id}`;
   const expiraEm = somarMinutos(ts, 35);
 
   if (!existente) {
@@ -165,7 +177,9 @@ export async function criarPix(
   const vinculada = await db.prepare("SELECT conta_pagamento_id FROM pagamentos WHERE pedido_id = ?1")
     .bind(pedido.id).first<{ conta_pagamento_id: string | null }>();
   const contaCobranca = await credenciaisPagamento(db, env, vinculada?.conta_pagamento_id ?? null);
-  const ordem = await chamarMercadoPago(contaCobranca, "", {
+  let ordem: OrdemMercadoPago;
+  try {
+    ordem = await chamarMercadoPago(contaCobranca, "", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -187,7 +201,21 @@ export async function criarPix(
       },
       payer: { email: pedido.email },
     }),
-  });
+    });
+  } catch (e) {
+    // HTTP 402 pode conter uma order criada, porém com transação finalizada em
+    // failed. Sem registrar isso, o pedido fica PENDING para sempre, sem QR.
+    if (e instanceof ErroRespostaMercadoPago && e.httpStatus === 402 &&
+        e.resposta.data?.id && e.resposta.data.status === "failed" &&
+        e.resposta.data.transactions?.payments?.[0]?.status === "failed") {
+      await db.prepare(
+        `UPDATE pagamentos SET status = 'REJECTED', external_id = ?1,
+                pix_copia_cola = NULL, updated_at = ?2
+          WHERE pedido_id = ?3 AND idempotency_key = ?4 AND status = 'PENDING'`,
+      ).bind(e.resposta.data.id, agora(), pedido.id, idempotencia).run();
+    }
+    throw e;
+  }
 
   const pix = ordem.transactions?.payments?.[0]?.payment_method?.qr_code;
   if (!ordem.id || !pix) {
@@ -355,7 +383,8 @@ export async function pagarComCartao(
     }>();
 
   if (existente?.status === "APPROVED") return { status: "PAGO", status_detail: "accredited" };
-  if (existente?.pix_copia_cola || (existente && existente.idempotency_key?.startsWith("pix-"))) {
+  if (existente?.status === "PENDING" &&
+      (existente.pix_copia_cola || existente.idempotency_key?.startsWith("pix-"))) {
     throw erro(409, "PIX_EXISTENTE", "Este pedido já possui uma cobrança Pix.");
   }
   if (existente?.status === "PENDING" && existente.idempotency_key !== idempotencia) {
