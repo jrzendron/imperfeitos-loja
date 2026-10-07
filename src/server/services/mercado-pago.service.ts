@@ -354,7 +354,73 @@ export function valorPagoEmCentavos(ordem: OrdemMercadoPago): number {
 
 function ordemFalhou(ordem: OrdemMercadoPago): boolean {
   const status = ordem.transactions?.payments?.[0]?.status ?? ordem.status;
-  return status === "failed" || status === "cancelled" || status === "rejected";
+  return status === "failed" || status === "canceled" || status === "cancelled" || status === "rejected";
+}
+
+/**
+ * Consulta uma cobrança ainda pendente quando o comprador abre o pedido.
+ * O webhook continua sendo o caminho principal; este é o resgate caso uma
+ * notificação atrase ou não chegue. A marcação atômica limita a uma consulta
+ * ao Mercado Pago por pedido a cada 30 segundos, mesmo com várias abas.
+ */
+export async function reconciliarPagamentoPendente(
+  db: D1Database,
+  env: Env,
+  pedidoId: string,
+): Promise<boolean> {
+  const pagamento = await db.prepare(
+    `SELECT pg.external_id, pg.valor_centavos, pg.conta_pagamento_id
+       FROM pagamentos pg JOIN pedidos p ON p.id = pg.pedido_id
+      WHERE pg.pedido_id = ?1 AND pg.provider = 'MERCADO_PAGO'
+        AND pg.status = 'PENDING' AND pg.external_id IS NOT NULL
+        AND p.status = 'AGUARDANDO_PAGAMENTO'`,
+  ).bind(pedidoId).first<{
+    external_id: string;
+    valor_centavos: number;
+    conta_pagamento_id: string | null;
+  }>();
+  if (!pagamento) return false;
+
+  const ts = agora();
+  const limite = new Date(Date.now() - 30_000).toISOString();
+  const reserva = await db.prepare(
+    `UPDATE pagamentos SET updated_at = ?1
+      WHERE pedido_id = ?2 AND provider = 'MERCADO_PAGO' AND status = 'PENDING'
+        AND external_id = ?3 AND updated_at < ?4`,
+  ).bind(ts, pedidoId, pagamento.external_id, limite).run();
+  if (!reserva.meta.changes) return false;
+
+  const ordem = await obterOrdemMercadoPago(db, env, pagamento.external_id, pagamento.conta_pagamento_id);
+  if (ordem.id !== pagamento.external_id || ordem.external_reference !== pedidoId ||
+      Math.round(Number(ordem.total_amount) * 100) !== pagamento.valor_centavos) {
+    throw erro(409, "ORDER_DIVERGENTE", "A cobrança consultada não corresponde ao pedido da loja.");
+  }
+  if (ordemFoiPaga(ordem)) {
+    if (valorPagoEmCentavos(ordem) !== pagamento.valor_centavos) {
+      throw erro(409, "VALOR_DIVERGENTE", "O valor pago não corresponde ao pedido da loja.");
+    }
+    try {
+      await registrarPagamento(db, env, pedidoId, {
+        provider: "MERCADO_PAGO",
+        adminEmail: "conciliacao@mercadopago",
+        externalId: pagamento.external_id,
+      });
+    } catch (e) {
+      // O webhook pode ter confirmado a mesma cobrança entre a consulta e o
+      // batch. Nesse caso, a leitura seguinte já verá o pedido pago.
+      if (!(e instanceof ErroDeNegocio && e.codigo === "JA_PAGO")) throw e;
+    }
+    return true;
+  }
+  if (ordemFalhou(ordem)) {
+    const resultado = await db.prepare(
+      `UPDATE pagamentos SET status = 'REJECTED', pix_copia_cola = NULL, updated_at = ?1
+        WHERE pedido_id = ?2 AND provider = 'MERCADO_PAGO'
+          AND external_id = ?3 AND status = 'PENDING'`,
+    ).bind(agora(), pedidoId, pagamento.external_id).run();
+    return Boolean(resultado.meta.changes);
+  }
+  return false;
 }
 
 export interface ResultadoCartao {

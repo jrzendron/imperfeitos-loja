@@ -96,7 +96,9 @@ export const pagamentoCartaoSchema = z
           .strict(),
       })
       .strict(),
-    device_id: z.string().max(200).optional(),
+    // O script de segurança do Mercado Pago pode gerar um identificador maior
+    // que 200 caracteres; não bloquear a compra antes de enviar ao provedor.
+    device_id: z.string().max(2048).optional(),
   })
   .strict();
 

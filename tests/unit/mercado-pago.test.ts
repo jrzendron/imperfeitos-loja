@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validarAssinaturaMercadoPago } from "../../src/server/routes/webhook";
-import { criarPix, ordemFoiPaga, valorPagoEmCentavos } from "../../src/server/services/mercado-pago.service";
+import { criarPix, ordemFoiPaga, reconciliarPagamentoPendente, valorPagoEmCentavos } from "../../src/server/services/mercado-pago.service";
 import { criarPedido } from "../../src/server/services/pedido.service";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -59,6 +59,54 @@ describe("Mercado Pago", () => {
 
   it("converte o valor pago para centavos", () => {
     expect(valorPagoEmCentavos({ id: "ORD1", total_paid_amount: "49.90" })).toBe(4990);
+  });
+
+  it("limita consultas repetidas ao provedor enquanto o pagamento está pendente", async () => {
+    const db = {
+      prepare: (sql: string) => ({
+        bind: () => ({
+          first: async () => sql.includes("FROM pagamentos pg")
+            ? { external_id: "ORD-1", valor_centavos: 4500, conta_pagamento_id: null }
+            : null,
+          run: async () => ({ meta: { changes: 0 } }),
+        }),
+      }),
+    } as unknown as D1Database;
+    const consulta = vi.fn();
+    vi.stubGlobal("fetch", consulta);
+
+    await expect(reconciliarPagamentoPendente(db, {} as Env, "ped-1")).resolves.toBe(false);
+    expect(consulta).not.toHaveBeenCalled();
+  });
+
+  it("não aprova cobrança com referência ou valor divergente", async () => {
+    const comandos: string[] = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: () => ({
+          first: async () => sql.includes("FROM pagamentos pg")
+            ? { external_id: "ORD-1", valor_centavos: 4500, conta_pagamento_id: null }
+            : null,
+          run: async () => {
+            comandos.push(sql);
+            return { meta: { changes: 1 } };
+          },
+        }),
+      }),
+    } as unknown as D1Database;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: "ORD-1",
+      external_reference: "outro-pedido",
+      total_amount: "45.00",
+      total_paid_amount: "45.00",
+      status: "processed",
+      status_detail: "accredited",
+    }), { status: 200 })));
+
+    await expect(reconciliarPagamentoPendente(db, { MERCADO_PAGO_ACCESS_TOKEN: "token-teste" } as Env, "ped-1"))
+      .rejects.toMatchObject({ codigo: "ORDER_DIVERGENTE" });
+    expect(comandos).toHaveLength(1);
+    expect(comandos[0]).toContain("UPDATE pagamentos SET updated_at");
   });
 
   it("não publica nem salva Pix de sandbox na loja de produção", async () => {

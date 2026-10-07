@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { criarPedidoSchema, pagamentoCartaoSchema, consultarCpfSchema } from "../../shared/schemas";
 import { criarPedido } from "../services/pedido.service";
 import { cancelarPedidoGerenciado } from "../services/cancelamento-pedido.service";
-import { criarPix, pagarComCartao } from "../services/mercado-pago.service";
+import { criarPix, pagarComCartao, reconciliarPagamentoPendente } from "../services/mercado-pago.service";
 import { exigirContaAtivaParaVendas } from "../services/conta-pagamento.service";
 import { sha256, derivarTokenRetirada, hmacSha256 } from "../utils/crypto";
 import { erro } from "../utils/http";
@@ -60,7 +60,7 @@ pedidosRouter.post("/consultar-cpf", async (c) => {
   return c.json({ pedidos });
 });
 
-async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPublico> {
+async function carregarPorToken(db: D1Database, env: Env, token: string, conciliar = true): Promise<PedidoPublico> {
   const hash = await sha256(token.trim());
 
   const pedido = await db
@@ -91,6 +91,18 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
     }>();
 
   if (!pedido) throw erro(404, "PEDIDO_NAO_ENCONTRADO", "Pedido não encontrado.");
+
+  if (conciliar && pedido.status === "AGUARDANDO_PAGAMENTO") {
+    try {
+      if (await reconciliarPagamentoPendente(db, env, pedido.id)) {
+        return carregarPorToken(db, env, token, false);
+      }
+    } catch (e) {
+      // Uma indisponibilidade temporária do provedor não impede o comprador
+      // de acompanhar o pedido. O próximo acesso pode tentar novamente.
+      console.warn("Conciliação ao consultar pedido falhou", pedido.id, (e as Error).message);
+    }
+  }
 
   const { results: itens } = await db
     .prepare(
@@ -129,7 +141,7 @@ async function carregarPorToken(db: D1Database, token: string): Promise<PedidoPu
  * serve como mecanismo de segurança — por isso não abre nada.
  */
 pedidosRouter.get("/:token", async (c) => {
-  const pedido = await carregarPorToken(c.env.DB, c.req.param("token"));
+  const pedido = await carregarPorToken(c.env.DB, c.env, c.req.param("token"));
   return c.json({ pedido });
 });
 

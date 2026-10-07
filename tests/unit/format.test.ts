@@ -1,12 +1,27 @@
 import { describe, it, expect } from "vitest";
 import { formatarBRL, formatarTelefone, mascararTelefone } from "../../src/shared/format";
-import { criarPedidoSchema } from "../../src/shared/schemas";
+import { criarPedidoSchema, pagamentoCartaoSchema } from "../../src/shared/schemas";
 
 describe("dinheiro", () => {
   it("formata centavos sem passar por float", () => {
     expect(formatarBRL(4500)).toContain("45,00");
     expect(formatarBRL(4900)).toContain("49,00");
     expect(formatarBRL(0)).toContain("0,00");
+  });
+});
+
+describe("schema de pagamento com cartão", () => {
+  it("aceita o identificador de dispositivo gerado pelo Mercado Pago", () => {
+    const entrada = {
+      attempt_id: "c4ee2948-6062-4f3d-bd30-3d42b9f85079",
+      token: "token-de-teste-12345",
+      payment_method_id: "visa",
+      payment_type_id: "credit_card",
+      installments: 1,
+      payer: { email: "test@testuser.com", identification: { type: "CPF", number: "12345678909" } },
+      device_id: "d".repeat(512),
+    };
+    expect(pagamentoCartaoSchema.parse(entrada).device_id).toHaveLength(512);
   });
 });
 
