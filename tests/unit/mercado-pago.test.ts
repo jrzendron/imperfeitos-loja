@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validarAssinaturaMercadoPago } from "../../src/server/routes/webhook";
-import { criarPix, ordemFoiPaga, reconciliarPagamentoPendente, valorPagoEmCentavos } from "../../src/server/services/mercado-pago.service";
+import { criarPix, ordemFoiPaga, pagarComCartao, reconciliarPagamentoPendente, valorPagoEmCentavos } from "../../src/server/services/mercado-pago.service";
 import { criarPedido } from "../../src/server/services/pedido.service";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -38,7 +38,7 @@ describe("Mercado Pago", () => {
     const dataId = "ORD01ABC";
     const requestId = "req-123";
     const ts = "1742505638683";
-    const v1 = await assinatura(segredo, `id:${dataId};request-id:${requestId};ts:${ts};`);
+    const v1 = await assinatura(segredo, `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`);
 
     await expect(
       validarAssinaturaMercadoPago(`ts=${ts},v1=${v1}`, requestId, dataId, segredo),
@@ -46,6 +46,28 @@ describe("Mercado Pago", () => {
     await expect(
       validarAssinaturaMercadoPago(`ts=${ts},v1=${v1}`, requestId, `${dataId}X`, segredo),
     ).resolves.toBe(false);
+  });
+
+  it("valida IDs de order em maiúsculas usando o manifest em minúsculas do Mercado Pago", async () => {
+    const segredo = "segredo-de-teste";
+    const id = "ORDTST01ABCDEF";
+    const requestId = "req-ord-1";
+    const ts = "1742505638683";
+    const v1 = await assinatura(segredo, `id:${id.toLowerCase()};request-id:${requestId};ts:${ts};`);
+    await expect(validarAssinaturaMercadoPago(`ts=${ts},v1=${v1}`, requestId, id, segredo))
+      .resolves.toBe(true);
+    await expect(validarAssinaturaMercadoPago(`ts=${ts},v1=${v1}`, requestId, `${id}X`, segredo))
+      .resolves.toBe(false);
+  });
+
+  it("aceita também a assinatura em maiúsculas usada pelo simulador do painel", async () => {
+    const segredo = "segredo-de-teste";
+    const id = "ORDTST01ABCDEF";
+    const requestId = "req-simulador";
+    const ts = "1742505638683";
+    const v1 = await assinatura(segredo, `id:${id};request-id:${requestId};ts:${ts};`);
+    await expect(validarAssinaturaMercadoPago(`ts=${ts},v1=${v1}`, requestId, id, segredo))
+      .resolves.toBe(true);
   });
 
   it("só considera pago quando a order está processada e acreditada", () => {
@@ -167,6 +189,41 @@ describe("Mercado Pago", () => {
     expect(comandos).toContainEqual(expect.objectContaining({
       sql: expect.stringContaining("status = 'REJECTED'"),
       valores: ["ORD-FAILED", expect.any(String), "ped-1", "pix-ped-1"],
+    }));
+  });
+
+  it("libera nova tentativa quando uma order de cartão é recusada com HTTP 402", async () => {
+    const comandos: Array<{ sql: string; valores: unknown[] }> = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...valores: unknown[]) => ({
+          first: async () => sql.includes("FROM pedidos p")
+            ? { id: "ped-1", numero: "TEST-000001", status: "AGUARDANDO_PAGAMENTO", valor_total_centavos: 4500, expires_at: null, email: "test@testuser.com", nome: "Teste" }
+            : null,
+          run: async () => { comandos.push({ sql, valores }); return { meta: { changes: 1 } }; },
+        }),
+        first: async () => null,
+      }),
+    } as unknown as D1Database;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      errors: [{ code: "failed", details: ["card_declined"] }],
+      data: {
+        id: "ORD-CARD-FAILED", status: "failed", status_detail: "cc_rejected_other_reason",
+        transactions: { payments: [{ status: "failed", status_detail: "cc_rejected_other_reason" }] },
+      },
+    }), { status: 402 })));
+
+    const resultado = await pagarComCartao(db, {
+      APP_ENV: "staging", MERCADO_PAGO_PUBLIC_KEY: "chave-de-teste", MERCADO_PAGO_ACCESS_TOKEN: "token-de-teste",
+    } as Env, "acesso-de-teste", {
+      attempt_id: "123e4567-e89b-42d3-a456-426614174000",
+      payment_method_id: "visa", payment_type_id: "credit_card", token: "token-ficticio", installments: 1,
+      payer: { email: "test@testuser.com", identification: { type: "CPF", number: "12345678909" } },
+    });
+    expect(resultado).toMatchObject({ status: "RECUSADO", status_detail: "cc_rejected_other_reason" });
+    expect(comandos).toContainEqual(expect.objectContaining({
+      sql: expect.stringContaining("status = 'REJECTED'"),
+      valores: ["ORD-CARD-FAILED", expect.any(String), "ped-1", "card-ped-1-123e4567-e89b-42d3-a456-426614174000"],
     }));
   });
 });

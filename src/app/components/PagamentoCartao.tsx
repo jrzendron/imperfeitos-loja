@@ -86,6 +86,7 @@ export function PagamentoCartao({
                   ...(window.MP_DEVICE_SESSION_ID ? { device_id: window.MP_DEVICE_SESSION_ID } : {}),
                 });
                 if (resultado.status === "RECUSADO") {
+                  await aoConcluir();
                   throw new Error("Pagamento recusado. Confira os dados ou tente outro cartão.");
                 }
                 await aoConcluir();

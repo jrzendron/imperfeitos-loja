@@ -126,6 +126,14 @@ export function Pedido() {
         </div>
       )}
 
+      {aguardando && pedido.pagamento?.status === "REJECTED" && (
+        <div className="mt-4">
+          <Aviso tipo="erro" titulo="Pagamento não aprovado">
+            A última tentativa não foi aprovada. Escolha Pix ou tente outro cartão.
+          </Aviso>
+        </div>
+      )}
+
       {podeEscolher && (
         <section className="cartao mt-5 p-5">
           <h2 className="text-center font-bold">Como você quer pagar?</h2>

@@ -352,7 +352,7 @@ export function valorPagoEmCentavos(ordem: OrdemMercadoPago): number {
   return Math.round(Number(valor) * 100);
 }
 
-function ordemFalhou(ordem: OrdemMercadoPago): boolean {
+export function ordemFalhou(ordem: OrdemMercadoPago): boolean {
   const status = ordem.transactions?.payments?.[0]?.status ?? ordem.status;
   return status === "failed" || status === "canceled" || status === "cancelled" || status === "rejected";
 }
@@ -508,37 +508,57 @@ export async function pagarComCartao(
   if (env.APP_ENV === "production" && contaCobranca.id === null) {
     throw erro(409, "PEDIDO_AMBIENTE_TESTE", "Este pedido foi criado com a conta de teste. Cancele-o e faça um novo pedido após configurar a conta de produção.");
   }
-  const ordem = await chamarMercadoPago(contaCobranca, "", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Idempotency-Key": idempotencia,
-      ...(entrada.device_id ? { "X-meli-session-id": entrada.device_id } : {}),
-    },
-    body: JSON.stringify({
-      type: "online",
-      total_amount: dinheiroMercadoPago(pedido.valor_total_centavos),
-      external_reference: pedido.id,
-      processing_mode: "automatic",
-      transactions: {
-        payments: [
-          {
-            amount: dinheiroMercadoPago(pedido.valor_total_centavos),
-            payment_method: {
-              id: entrada.payment_method_id,
-              type: entrada.payment_type_id,
-              token: entrada.token,
-              installments: entrada.installments,
+  let ordem: OrdemMercadoPago;
+  try {
+    ordem = await chamarMercadoPago(contaCobranca, "", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencia,
+        ...(entrada.device_id ? { "X-meli-session-id": entrada.device_id } : {}),
+      },
+      body: JSON.stringify({
+        type: "online",
+        total_amount: dinheiroMercadoPago(pedido.valor_total_centavos),
+        external_reference: pedido.id,
+        processing_mode: "automatic",
+        transactions: {
+          payments: [
+            {
+              amount: dinheiroMercadoPago(pedido.valor_total_centavos),
+              payment_method: {
+                id: entrada.payment_method_id,
+                type: entrada.payment_type_id,
+                token: entrada.token,
+                installments: entrada.installments,
+              },
             },
-          },
-        ],
-      },
-      payer: {
-        email: entrada.payer.email,
-        identification: entrada.payer.identification,
-      },
-    }),
-  });
+          ],
+        },
+        payer: {
+          email: entrada.payer.email,
+          identification: entrada.payer.identification,
+        },
+      }),
+    });
+  } catch (e) {
+    const recusada = e instanceof ErroRespostaMercadoPago && e.httpStatus === 402
+      ? e.resposta.data : undefined;
+    // Uma resposta 402 com order e transação finalizadas em falha é
+    // definitiva. Não deixar a linha PENDING sem ID prender o comprador.
+    // Erros de rede ou resposta ambígua continuam pendentes por segurança.
+    if (recusada?.id && recusada.status === "failed" && ordemFalhou(recusada)) {
+      await db.prepare(
+        `UPDATE pagamentos SET status = 'REJECTED', external_id = ?1, updated_at = ?2
+          WHERE pedido_id = ?3 AND idempotency_key = ?4 AND status = 'PENDING'`,
+      ).bind(recusada.id, agora(), pedido.id, idempotencia).run();
+      return {
+        status: "RECUSADO",
+        status_detail: recusada.status_detail ?? recusada.transactions?.payments?.[0]?.status_detail ?? null,
+      };
+    }
+    throw e;
+  }
 
   const detalhe = ordem.status_detail ?? ordem.transactions?.payments?.[0]?.status_detail ?? null;
   await db

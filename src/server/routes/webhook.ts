@@ -4,10 +4,13 @@ import { erro, violouUnique } from "../utils/http";
 import { agora, novoId } from "../utils/ids";
 import {
   obterOrdemMercadoPago,
+  ordemFalhou,
   ordemFoiPaga,
+  ordemFoiReembolsada,
   valorPagoEmCentavos,
 } from "../services/mercado-pago.service";
 import { registrarPagamento } from "../services/pedido.service";
+import { cancelarPedidoGerenciado } from "../services/cancelamento-pedido.service";
 import { credenciaisPagamento } from "../services/conta-pagamento.service";
 
 export const webhookMercadoPago = new Hono<{ Bindings: Env }>();
@@ -43,8 +46,16 @@ export async function validarAssinaturaMercadoPago(
   if (!assinatura || !requestId || !dataId || !segredo) return false;
   const { ts, v1 } = componentesAssinatura(assinatura);
   if (!ts || !/^[a-f0-9]{64}$/i.test(v1)) return false;
-  const esperado = await hmacHex(segredo, `id:${dataId};request-id:${requestId};ts:${ts};`);
-  return comparaSeguro(esperado.toLowerCase(), v1.toLowerCase());
+  // A assinatura do Mercado Pago usa o data.id alfanumérico em minúsculas,
+  // mesmo quando a URL e o corpo trazem a order em maiúsculas.
+  const esperado = await hmacHex(segredo, `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`);
+  // O simulador do painel ainda assina IDs em maiúsculas; aceitar ambas as
+  // formas preserva HMAC obrigatório sem tratar o simulador como compra real.
+  const esperadoOriginal = dataId === dataId.toLowerCase()
+    ? esperado
+    : await hmacHex(segredo, `id:${dataId};request-id:${requestId};ts:${ts};`);
+  return comparaSeguro(esperado.toLowerCase(), v1.toLowerCase()) ||
+    comparaSeguro(esperadoOriginal.toLowerCase(), v1.toLowerCase());
 }
 
 webhookMercadoPago.post("/mercado-pago", async (c) => {
@@ -93,6 +104,20 @@ webhookMercadoPago.post("/mercado-pago", async (c) => {
     dataId,
     conta.webhookSecret,
   );
+  if (!valida && c.env.APP_ENV === "staging") {
+    const { ts, v1 } = componentesAssinatura(assinatura);
+    const assinaturaOriginal = ts && v1 && conta.webhookSecret
+      ? await hmacHex(conta.webhookSecret, `id:${dataId};request-id:${requestId};ts:${ts};`)
+      : "";
+    console.warn("Assinatura de webhook de teste recusada", {
+      idPresente: Boolean(dataId),
+      idCorrespondeAoCorpo: dataId === corpo.data?.id,
+      requestIdPresente: Boolean(requestId),
+      timestampPresente: Boolean(ts),
+      segredoPresente: Boolean(conta.webhookSecret),
+      coincideSemNormalizarId: Boolean(assinaturaOriginal) && comparaSeguro(assinaturaOriginal.toLowerCase(), v1.toLowerCase()),
+    });
+  }
   if (!valida) throw erro(401, "ASSINATURA_INVALIDA", "Assinatura do webhook inválida.");
 
   const eventoId = String(corpo.id ?? `${corpo.action ?? "order"}:${dataId}:${corpo.date_created ?? requestId}`);
@@ -159,6 +184,16 @@ webhookMercadoPago.post("/mercado-pago", async (c) => {
       adminEmail: "webhook@mercadopago",
       externalId: dataId,
     });
+  } else if (ordemFoiReembolsada(ordem)) {
+    // Um reembolso feito diretamente no Mercado Pago também precisa bloquear
+    // a retirada e ajustar o caixa/estoque local, sem tentar reembolsar de novo.
+    await cancelarPedidoGerenciado(c.env.DB, c.env, vinculada.pedido_id, "ADMIN", "webhook@mercadopago");
+  } else if (ordemFalhou(ordem)) {
+    await c.env.DB.prepare(
+      `UPDATE pagamentos SET status = 'REJECTED', pix_copia_cola = NULL, updated_at = ?1
+        WHERE pedido_id = ?2 AND provider = 'MERCADO_PAGO'
+          AND external_id = ?3 AND status = 'PENDING'`,
+    ).bind(agora(), vinculada.pedido_id, dataId).run();
   }
 
   await c.env.DB.prepare(
