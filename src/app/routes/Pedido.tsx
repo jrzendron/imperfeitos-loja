@@ -100,6 +100,7 @@ export function Pedido() {
   if (!pedido) return <Pagina><Carregando /></Pagina>;
 
   const aguardando = pedido.status === "AGUARDANDO_PAGAMENTO";
+  const pixDeTeste = /TESTUSER/i.test(pedido.pagamento?.pix_copia_cola ?? "");
   const podeEscolher =
     aguardando &&
     (!pedido.pagamento || ["REJECTED", "CANCELLED"].includes(pedido.pagamento.status));
@@ -162,7 +163,17 @@ export function Pedido() {
         </div>
       )}
 
-      {aguardando && pedido.pagamento?.pix_copia_cola && (
+      {aguardando && pixDeTeste && (
+        <div className="mt-5">
+          <Aviso tipo="erro" titulo="Este Pix é apenas de teste">
+            Não tente pagar este código pelo aplicativo do banco. A organização precisa configurar
+            a conta de produção do Mercado Pago. Você pode cancelar este pedido e fazer outro
+            depois que a configuração for corrigida.
+          </Aviso>
+        </div>
+      )}
+
+      {aguardando && pedido.pagamento?.pix_copia_cola && !pixDeTeste && (
         <section className="cartao mt-5 p-5 text-center">
           <h2 className="font-bold">Pague com Pix</h2>
           <p className="mt-1 text-sm text-suave">

@@ -44,7 +44,7 @@ export function AdminPagamento() {
     setTestando(true);
     try {
       const resultado = await api.admin.testarContaPagamento();
-      setSucesso(`Conexão validada com o Mercado Pago. Conta recebedora ${resultado.user_id}. Nenhuma cobrança foi criada.`);
+      setSucesso(`Access Token aceito pelo Mercado Pago para a conta ${resultado.user_id}. Nenhuma cobrança foi criada. Este teste não confirma se a conta está em modo de produção.`);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível testar a conexão.");
     } finally {
@@ -66,6 +66,13 @@ export function AdminPagamento() {
             {conta.origem === "worker" ? "Configurada diretamente na Cloudflare" : "Configurada neste painel"}
             {conta.atualizado_em ? ` · Alterada em ${formatarDataHora(conta.atualizado_em)}` : ""}
           </p>
+          <div className="mt-4">
+            <Aviso tipo="alerta" titulo="Antes de receber pagamentos reais">
+              Confira se a Public Key e o Access Token vieram de <strong>Produção → Credenciais de produção</strong> no Mercado Pago
+              e se a conta tem uma chave Pix cadastrada. Credenciais de teste também passam na verificação de conexão,
+              mas geram um QR que não pode ser pago em um banco real.
+            </Aviso>
+          </div>
           <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-suave">Public Key</dt><dd className="font-semibold">{conta.public_key_final ? `••••••${conta.public_key_final}` : "Não configurada"}</dd></div>
             <div><dt className="text-suave">Access Token</dt><dd className="font-semibold">{conta.access_token_configurado ? "Configurado e oculto" : "Não configurado"}</dd></div>

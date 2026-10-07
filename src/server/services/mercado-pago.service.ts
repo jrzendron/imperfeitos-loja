@@ -195,6 +195,18 @@ export async function criarPix(
     throw erro(502, "PIX_INCOMPLETO", "O Mercado Pago não devolveu um Pix válido. Tente novamente.");
   }
 
+  // O Mercado Pago também devolve um QR no sandbox, mas um banco real não o
+  // reconhece. Nunca publicar esse código na loja de produção.
+  const ticket = ordem.transactions?.payments?.[0]?.payment_method?.ticket_url ?? "";
+  if (env.APP_ENV === "production" && (/TESTUSER/i.test(pix) || /\/sandbox\//i.test(ticket))) {
+    await db.prepare(
+      `UPDATE pagamentos SET status = 'REJECTED', external_id = NULL,
+              pix_copia_cola = NULL, updated_at = ?1
+        WHERE pedido_id = ?2 AND provider = 'MERCADO_PAGO' AND status = 'PENDING'`,
+    ).bind(agora(), pedido.id).run();
+    throw erro(503, "PIX_AMBIENTE_TESTE", "O Pix da loja está em modo de teste e não pode ser pago. Avise a organização para configurar as credenciais de produção.");
+  }
+
   await db.batch([
     db
       .prepare(
