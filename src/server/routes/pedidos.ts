@@ -3,6 +3,7 @@ import { criarPedidoSchema, pagamentoCartaoSchema, consultarCpfSchema } from "..
 import { criarPedido } from "../services/pedido.service";
 import { cancelarPedidoGerenciado } from "../services/cancelamento-pedido.service";
 import { criarPix, pagarComCartao } from "../services/mercado-pago.service";
+import { exigirContaAtivaParaVendas } from "../services/conta-pagamento.service";
 import { sha256, derivarTokenRetirada, hmacSha256 } from "../utils/crypto";
 import { erro } from "../utils/http";
 import type { PedidoPublico, PedidoConsultadoCpf, StatusPedido } from "../../shared/types";
@@ -134,6 +135,7 @@ pedidosRouter.get("/:token", async (c) => {
 
 /** Cria (ou recupera de forma idempotente) o Pix deste pedido. */
 pedidosRouter.post("/:token/pix", async (c) => {
+  await exigirContaAtivaParaVendas(c.env.DB, c.env);
   const pagamento = await criarPix(c.env.DB, c.env, c.req.param("token"));
   return c.json({ pagamento });
 });

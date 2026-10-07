@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validarAssinaturaMercadoPago } from "../../src/server/routes/webhook";
 import { criarPix, ordemFoiPaga, valorPagoEmCentavos } from "../../src/server/services/mercado-pago.service";
+import { criarPedido } from "../../src/server/services/pedido.service";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -17,6 +18,21 @@ async function assinatura(segredo: string, mensagem: string) {
 }
 
 describe("Mercado Pago", () => {
+  it("não cria pedido nem reserva estoque em produção sem conta recebedora no painel", async () => {
+    const consultas: string[] = [];
+    const db = {
+      prepare: (sql: string) => {
+        consultas.push(sql);
+        return { first: async () => null };
+      },
+    } as unknown as D1Database;
+    await expect(criarPedido(db, { APP_ENV: "production" } as Env, {
+      cliente: { nome: "Comprador", telefone: "47999999999", cpf: "10213307952", email: "comprador@example.com" },
+      itens: [{ produto_variacao_id: "pp", quantidade: 1 }],
+    })).rejects.toMatchObject({ codigo: "PAGAMENTOS_INDISPONIVEIS" });
+    expect(consultas).toEqual(["SELECT * FROM contas_pagamento WHERE ativo = 1 LIMIT 1"]);
+  });
+
   it("aceita uma assinatura HMAC legítima e recusa uma adulterada", async () => {
     const segredo = "segredo-de-teste";
     const dataId = "ORD01ABC";

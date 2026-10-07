@@ -70,6 +70,14 @@ async function contaAtiva(db: D1Database): Promise<ContaSalva | null> {
   return db.prepare("SELECT * FROM contas_pagamento WHERE ativo = 1 LIMIT 1").first<ContaSalva>();
 }
 
+/** A loja publicada só aceita novos pedidos com conta recebedora cadastrada no painel. */
+export async function exigirContaAtivaParaVendas(db: D1Database, env: Env): Promise<void> {
+  if (env.APP_ENV !== "production") return;
+  if (!await contaAtiva(db)) {
+    throw erro(503, "PAGAMENTOS_INDISPONIVEIS", "A loja está aguardando a configuração das credenciais de produção do Mercado Pago. Nenhum pedido foi criado ou cobrado.");
+  }
+}
+
 export async function credenciaisPagamento(db: D1Database, env: Env, id?: string | null): Promise<CredenciaisPagamento> {
   // NULL representa a conta original, mantida nos Secrets do Worker. Cobranças
   // antigas continuam consultáveis mesmo após cadastrar outra conta no painel.

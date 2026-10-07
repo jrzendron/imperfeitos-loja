@@ -3,6 +3,7 @@ import { novoId, agora, somarMinutos, gerarCodigoRetirada } from "../utils/ids";
 import { gerarTokenRetirada, gerarNonce, derivarTokenRetirada, sha256, hmacSha256 } from "../utils/crypto";
 import { erro, violouCheck, violouUnique } from "../utils/http";
 import { auditar } from "./auditoria.service";
+import { exigirContaAtivaParaVendas } from "./conta-pagamento.service";
 
 interface VariacaoLida {
   id: string;
@@ -99,6 +100,7 @@ export async function criarPedido(
   env: Env,
   entrada: CriarPedidoInput,
 ): Promise<{ numero: string; acesso_token: string; codigo_retirada: string }> {
+  await exigirContaAtivaParaVendas(db, env);
   const itens = consolidarItens(entrada.itens);
   const ts = agora();
 

@@ -4,7 +4,7 @@ import { sha256 } from "../utils/crypto";
 import { erro, violouUnique } from "../utils/http";
 import { agora, novoId, somarMinutos } from "../utils/ids";
 import { registrarPagamento } from "./pedido.service";
-import { credenciaisPagamento, type CredenciaisPagamento } from "./conta-pagamento.service";
+import { credenciaisPagamento, exigirContaAtivaParaVendas, type CredenciaisPagamento } from "./conta-pagamento.service";
 
 const API = "https://api.mercadopago.com/v1/orders";
 
@@ -334,6 +334,7 @@ export async function pagarComCartao(
   acessoToken: string,
   entrada: PagamentoCartaoInput,
 ): Promise<ResultadoCartao> {
+  await exigirContaAtivaParaVendas(db, env);
   const pedido = await localizarPedido(db, acessoToken);
   const idempotencia = `card-${pedido.id}-${entrada.attempt_id}`;
   const ts = agora();
@@ -402,6 +403,9 @@ export async function pagarComCartao(
   const vinculada = await db.prepare("SELECT conta_pagamento_id FROM pagamentos WHERE pedido_id = ?1")
     .bind(pedido.id).first<{ conta_pagamento_id: string | null }>();
   const contaCobranca = await credenciaisPagamento(db, env, vinculada?.conta_pagamento_id ?? null);
+  if (env.APP_ENV === "production" && contaCobranca.id === null) {
+    throw erro(409, "PEDIDO_AMBIENTE_TESTE", "Este pedido foi criado com a conta de teste. Cancele-o e faça um novo pedido após configurar a conta de produção.");
+  }
   const ordem = await chamarMercadoPago(contaCobranca, "", {
     method: "POST",
     headers: {
