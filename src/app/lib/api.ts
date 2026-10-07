@@ -80,7 +80,7 @@ async function pedir<T>(caminho: string, opcoes: RequestInit & { admin?: boolean
 }
 
 export const api = {
-  catalogo: () => pedir<{ produtos: ProdutoPublico[] }>("/produtos"),
+  catalogo: (signal?: AbortSignal) => pedir<{ produtos: ProdutoPublico[] }>("/produtos", { signal }),
   produto: (slug: string) => pedir<{ produto: ProdutoPublico }>(`/produtos/${slug}`),
 
   criarPedido: (corpo: unknown) =>

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   createRootRoute,
   createRoute,
@@ -11,8 +12,13 @@ import { Checkout } from "./routes/Checkout";
 import { Pedido } from "./routes/Pedido";
 import { RetiradaPublica } from "./routes/RetiradaPublica";
 import { MeusPedidos } from "./routes/MeusPedidos";
-import { Admin } from "./routes/Admin";
-import { Pagina, Aviso } from "./components/ui";
+import { Pagina, Aviso, Carregando } from "./components/ui";
+
+const Admin = lazy(() => import("./routes/Admin").then((modulo) => ({ default: modulo.Admin })));
+
+function PaginaAdmin() {
+  return <Suspense fallback={<Pagina><Carregando texto="Carregando o painel…" /></Pagina>}><Admin /></Suspense>;
+}
 
 const raiz = createRootRoute({
   component: Outlet,
@@ -33,7 +39,7 @@ const rotas = [
   createRoute({ getParentRoute: () => raiz, path: "/meus-pedidos", component: MeusPedidos }),
   createRoute({ getParentRoute: () => raiz, path: "/pedido/$token", component: Pedido }),
   createRoute({ getParentRoute: () => raiz, path: "/retirada/$token", component: RetiradaPublica }),
-  createRoute({ getParentRoute: () => raiz, path: "/admin", component: Admin }),
+  createRoute({ getParentRoute: () => raiz, path: "/admin", component: PaginaAdmin }),
 ];
 
 export const router = createRouter({ routeTree: raiz.addChildren(rotas) });

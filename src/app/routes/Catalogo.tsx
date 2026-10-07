@@ -15,10 +15,31 @@ const MAPA_EMBED = "https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1sR
 export function Catalogo() {
   const [produtos, setProdutos] = useState<ProdutoPublico[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
-    api.catalogo().then((r) => setProdutos(r.produtos)).catch((e) => setErro(e.message));
-  }, []);
+    const controlador = new AbortController();
+    let ativo = true;
+    const limite = window.setTimeout(() => controlador.abort(), 8000);
+
+    api.catalogo(controlador.signal)
+      .then((r) => {
+        if (ativo) setProdutos(r.produtos);
+      })
+      .catch((e: Error) => {
+        if (!ativo) return;
+        setErro(e.name === "AbortError"
+          ? "O catálogo demorou para responder. Tente novamente."
+          : e.message);
+      })
+      .finally(() => window.clearTimeout(limite));
+
+    return () => {
+      ativo = false;
+      window.clearTimeout(limite);
+      controlador.abort();
+    };
+  }, [tentativa]);
 
   return (
     <Pagina>
@@ -109,7 +130,13 @@ export function Catalogo() {
               </div>
               <p>Escolha seus tamanhos e faça o pedido para retirada.</p>
             </div>
-            {erro && <Aviso tipo="erro">{erro}</Aviso>}
+            {erro && <Aviso tipo="erro">
+              <p>{erro}</p>
+              <button type="button" className="mt-3 rounded border border-current px-4 py-2 font-semibold" onClick={() => {
+                setErro(null);
+                setTentativa((atual) => atual + 1);
+              }}>Tentar novamente</button>
+            </Aviso>}
             {!produtos && !erro && <Carregando texto="Carregando a camiseta…" />}
             {produtos?.length === 0 && <Aviso>Nenhum produto disponível no momento.</Aviso>}
             <div className="flow-lista-produtos">
