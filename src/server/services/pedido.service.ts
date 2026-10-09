@@ -154,11 +154,11 @@ export async function criarPedido(
     db
       .prepare(
          `INSERT INTO pedidos
-           (id, numero, cliente_id, status, valor_total_centavos,
+           (id, numero, cliente_id, cidade, status, valor_total_centavos,
             acesso_token_hash, codigo_retirada, expires_at, created_at, updated_at)
-         VALUES (?1, ?2, ?3, 'AGUARDANDO_PAGAMENTO', 0, ?4, ?5, ?6, ?7, ?7)`,
+         VALUES (?1, ?2, ?3, ?4, 'AGUARDANDO_PAGAMENTO', 0, ?5, ?6, ?7, ?8, ?8)`,
       )
-      .bind(pedidoId, numero, clienteId, acessoHash, codigoRetirada, somarMinutos(ts, minutos), ts),
+      .bind(pedidoId, numero, clienteId, entrada.cliente.cidade, acessoHash, codigoRetirada, somarMinutos(ts, minutos), ts),
   );
 
   // 3c. Os itens. INSERT ... SELECT lê o preço DE DENTRO da transação,

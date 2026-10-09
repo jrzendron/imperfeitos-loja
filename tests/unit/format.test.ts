@@ -41,12 +41,17 @@ describe("telefone", () => {
 
 describe("schema de criação de pedido", () => {
   const base = {
-    cliente: { nome: "Fulano de Tal", telefone: "(47) 99988-7766", cpf: "529.982.247-25" },
+    cliente: { nome: "Fulano de Tal", telefone: "(47) 99988-7766", cpf: "529.982.247-25", cidade: "Blumenau" },
     itens: [{ produto_variacao_id: "var_m", quantidade: 1 }],
   };
 
   it("aceita o corpo mínimo e normaliza o telefone", () => {
     expect(criarPedidoSchema.parse(base).cliente.telefone).toBe("47999887766");
+  });
+
+  it("exige a cidade e remove espaços extras", () => {
+    expect(criarPedidoSchema.parse({ ...base, cliente: { ...base.cliente, cidade: "  Blumenau  " } }).cliente.cidade).toBe("Blumenau");
+    expect(() => criarPedidoSchema.parse({ ...base, cliente: { ...base.cliente, cidade: " " } })).toThrow();
   });
 
   it("RECUSA qualquer tentativa de mandar preço", () => {

@@ -66,6 +66,7 @@ export interface PedidoPublico {
   expires_at: string | null;
   created_at: string;
   cliente_nome: string;
+  cidade: string | null;
   itens: ItemPedido[];
   retirada_token?: string | null;
   retirado_em?: string | null;

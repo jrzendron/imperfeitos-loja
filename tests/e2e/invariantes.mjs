@@ -55,6 +55,7 @@ const cliente = (n) => {
     nome: `Teste ${n} da Silva`,
     telefone: String(47990000000 + id),
     cpf: gerarCpf(id),
+    cidade: "Blumenau",
   };
 };
 const disp = async (id) =>

@@ -11,6 +11,7 @@ export function Checkout() {
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
+  const [cidade, setCidade] = useState("");
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export function Checkout() {
     try {
       // Só vão o id da variação e a quantidade. Preço, nunca.
       const { acesso_token } = await api.criarPedido({
-        cliente: { nome: nome.trim(), telefone, cpf, email: email.trim() },
+        cliente: { nome: nome.trim(), telefone, cpf, cidade: cidade.trim(), email: email.trim() },
         itens: itens.map((i) => ({
           produto_variacao_id: i.produto_variacao_id,
           quantidade: i.quantidade,
@@ -141,6 +142,21 @@ export function Checkout() {
           <p className="mt-1.5 text-xs text-suave">
             Usado para você consultar seus pedidos depois. O CPF não fica salvo em texto no sistema.
           </p>
+        </div>
+
+        <div className="mb-4">
+          <label className="rotulo" htmlFor="cidade">Cidade</label>
+          <input
+            id="cidade"
+            className="campo"
+            value={cidade}
+            onChange={(e) => setCidade(e.target.value)}
+            required
+            minLength={2}
+            maxLength={100}
+            autoComplete="address-level2"
+            placeholder="Sua cidade"
+          />
         </div>
 
         <div className="mb-4">

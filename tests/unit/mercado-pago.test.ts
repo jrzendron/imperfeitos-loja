@@ -27,7 +27,7 @@ describe("Mercado Pago", () => {
       },
     } as unknown as D1Database;
     await expect(criarPedido(db, { APP_ENV: "production" } as Env, {
-      cliente: { nome: "Comprador", telefone: "47999999999", cpf: "10213307952", email: "comprador@example.com" },
+      cliente: { nome: "Comprador", telefone: "47999999999", cpf: "10213307952", cidade: "Blumenau", email: "comprador@example.com" },
       itens: [{ produto_variacao_id: "pp", quantidade: 1 }],
     })).rejects.toMatchObject({ codigo: "PAGAMENTOS_INDISPONIVEIS" });
     expect(consultas).toEqual(["SELECT * FROM contas_pagamento WHERE ativo = 1 LIMIT 1"]);

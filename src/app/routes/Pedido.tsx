@@ -112,7 +112,7 @@ export function Pedido() {
         <h1 className="text-2xl font-bold tabular-nums">{pedido.numero}</h1>
         <Etiqueta status={pedido.status} />
       </div>
-      <p className="mt-1 text-suave">{pedido.cliente_nome}</p>
+      <p className="mt-1 text-suave">{pedido.cliente_nome}{pedido.cidade ? ` · ${pedido.cidade}` : ""}</p>
 
       {aguardando && (
         <div className="mt-5">

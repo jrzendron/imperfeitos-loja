@@ -112,7 +112,7 @@ adminRouter.get("/pedidos", async (c) => {
   if (busca) {
     valores.push(`%${busca}%`, `%${busca}%`, `%${busca.replace(/\D/g, "")}%`);
     condicoes.push(
-      `(p.numero LIKE ?${valores.length - 2} OR c.nome LIKE ?${valores.length - 1} OR c.telefone LIKE ?${valores.length})`,
+      `(p.numero LIKE ?${valores.length - 2} OR c.nome LIKE ?${valores.length - 1} OR c.telefone LIKE ?${valores.length} OR p.cidade LIKE ?${valores.length - 2})`,
     );
   }
 
@@ -129,7 +129,7 @@ adminRouter.get("/pedidos", async (c) => {
     `SELECT p.id, p.numero,
             CASE WHEN pg.status = 'APPROVED'
                  THEN p.codigo_retirada ELSE NULL END AS codigo_retirada,
-            p.status, p.valor_total_centavos, p.created_at, p.expires_at,
+            p.status, p.cidade, p.valor_total_centavos, p.created_at, p.expires_at,
             c.nome AS cliente_nome, c.telefone AS cliente_telefone,
             pg.status AS pagamento_status, pg.provider AS pagamento_provider, pg.paid_at,
             r.data_hora AS retirado_em, r.admin_email AS retirado_por,

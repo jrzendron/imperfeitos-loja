@@ -65,7 +65,7 @@ async function carregarPorToken(db: D1Database, env: Env, token: string, concili
 
   const pedido = await db
     .prepare(
-      `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos, p.expires_at, p.created_at,
+      `SELECT p.id, p.numero, p.codigo_retirada, p.status, p.valor_total_centavos, p.expires_at, p.created_at, p.cidade,
               c.nome AS cliente_nome,
               t.id   AS token_id,
               r.data_hora AS retirado_em
@@ -86,6 +86,7 @@ async function carregarPorToken(db: D1Database, env: Env, token: string, concili
       expires_at: string | null;
       created_at: string;
       cliente_nome: string;
+      cidade: string | null;
       token_id: string | null;
       retirado_em: string | null;
     }>();
@@ -129,6 +130,7 @@ async function carregarPorToken(db: D1Database, env: Env, token: string, concili
     expires_at: pedido.expires_at,
     created_at: pedido.created_at,
     cliente_nome: pedido.cliente_nome,
+    cidade: pedido.cidade,
     itens,
     retirado_em: pedido.retirado_em,
     pagamento: pagamento ?? null,

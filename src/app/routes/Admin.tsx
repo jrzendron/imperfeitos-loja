@@ -4,17 +4,15 @@ import { formatarBRL, formatarDataHora, formatarTelefone } from "../../shared/fo
 import { Pagina, Aviso, Etiqueta, Carregando } from "../components/ui";
 import { Scanner } from "../components/Scanner";
 import { AdminProdutos } from "./AdminProdutos";
-import { AdminPagamento } from "./AdminPagamento";
 import type { StatusPedido } from "../../shared/types";
 
-type Aba = "pedidos" | "produtos" | "estoque" | "retirada" | "pagamentos";
+type Aba = "pedidos" | "produtos" | "estoque" | "retirada";
 
 const ABAS: { id: Aba; titulo: string; curto: string; descricao: string }[] = [
   { id: "pedidos", titulo: "Gestão de pedidos", curto: "Pedidos", descricao: "Compradores, pagamentos e entregas" },
   { id: "estoque", titulo: "Controle de estoque", curto: "Estoque", descricao: "Peças físicas, reservadas e disponíveis" },
   { id: "produtos", titulo: "Camiseta da loja", curto: "Camiseta", descricao: "Fotos, categorias, tamanhos, preços e medidas" },
   { id: "retirada", titulo: "Retirada de pedidos", curto: "Retirada", descricao: "Leitura do QR e confirmação da entrega" },
-  { id: "pagamentos", titulo: "Conta de pagamentos", curto: "Pagamentos", descricao: "Conta recebedora e credenciais do Mercado Pago" },
 ];
 
 export function Admin() {
@@ -47,7 +45,7 @@ export function Admin() {
         </button>
       </div>
 
-      <nav className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-5" aria-label="Seções do painel">
+      <nav className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-4" aria-label="Seções do painel">
         {ABAS.map((item) => (
           <button
             key={item.id}
@@ -73,7 +71,6 @@ export function Admin() {
         {aba === "produtos" && <AdminProdutos />}
         {aba === "estoque" && <AbaEstoque />}
         {aba === "retirada" && <AbaRetirada />}
-        {aba === "pagamentos" && <AdminPagamento />}
       </div>
     </Pagina>
   );
@@ -127,6 +124,7 @@ interface LinhaPedido {
   created_at: string;
   cliente_nome: string;
   cliente_telefone: string;
+  cidade: string | null;
   itens: number;
   itens_resumo: string;
   pagamento_status: string | null;
@@ -224,7 +222,7 @@ function AbaPedidos() {
       <div className="cartao mt-5 grid gap-3 p-4 sm:grid-cols-[1fr_14rem]">
         <input
           className="campo"
-          placeholder="Número, nome ou telefone"
+          placeholder="Número, nome, telefone ou cidade"
           value={busca}
           onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
         />
@@ -258,7 +256,7 @@ function AbaPedidos() {
             </div>
 
             <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <InfoPedido rotulo="Comprador" valor={p.cliente_nome} complemento={formatarTelefone(p.cliente_telefone)} />
+              <InfoPedido rotulo="Comprador" valor={p.cliente_nome} complemento={`${formatarTelefone(p.cliente_telefone)}${p.cidade ? ` · ${p.cidade}` : ""}`} />
               <InfoPedido rotulo="Itens" valor={p.itens_resumo || `${p.itens} item(ns)`} />
               <InfoPedido
                 rotulo="Pagamento"
@@ -298,6 +296,7 @@ function AbaPedidos() {
                     <dl className="mt-3 space-y-2 text-sm">
                       <Linha rotulo="Nome" valor={detalhe.pedido.cliente_nome} />
                       <Linha rotulo="Telefone" valor={formatarTelefone(detalhe.pedido.cliente_telefone)} />
+                      <Linha rotulo="Cidade" valor={detalhe.pedido.cidade || "Não informada"} />
                       <Linha rotulo="E-mail" valor={detalhe.pedido.cliente_email || "Não informado"} />
                       <Linha rotulo="Código" valor={detalhe.pedido.pagamento_status === "APPROVED" ? (detalhe.pedido.codigo_retirada || "Pedido antigo") : "Indisponível"} />
                     </dl>

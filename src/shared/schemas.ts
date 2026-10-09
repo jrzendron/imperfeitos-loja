@@ -49,6 +49,7 @@ export const criarPedidoSchema = z
         nome: z.string().trim().min(3, "Informe o nome completo.").max(120),
         telefone: telefoneSchema,
         cpf: cpfSchema,
+        cidade: z.string().trim().min(2, "Informe sua cidade.").max(100),
         email: z.string().trim().email().max(160).optional().or(z.literal("")),
       })
       .strict(),
