@@ -23,6 +23,19 @@ describe("schema de pagamento com cartão", () => {
     };
     expect(pagamentoCartaoSchema.parse(entrada).device_id).toHaveLength(512);
   });
+
+  it("aceita débito à vista e recusa parcelas no débito", () => {
+    const entrada = {
+      attempt_id: "c4ee2948-6062-4f3d-bd30-3d42b9f85079",
+      token: "token-de-teste-12345",
+      payment_method_id: "visa",
+      payment_type_id: "debit_card",
+      installments: 1,
+      payer: { email: "test@testuser.com", identification: { type: "CPF", number: "12345678909" } },
+    };
+    expect(pagamentoCartaoSchema.parse(entrada).payment_type_id).toBe("debit_card");
+    expect(() => pagamentoCartaoSchema.parse({ ...entrada, installments: 2 })).toThrow();
+  });
 });
 
 describe("telefone", () => {

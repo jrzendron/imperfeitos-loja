@@ -14,7 +14,7 @@ export function Pedido() {
   const [erro, setErro] = useState<string | null>(null);
   const [erroPix, setErroPix] = useState<string | null>(null);
   const [criandoPix, setCriandoPix] = useState(false);
-  const [metodo, setMetodo] = useState<"pix" | "cartao" | null>(null);
+  const [metodo, setMetodo] = useState<"pix" | "credito" | "debito" | null>(null);
   const [cancelando, setCancelando] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -137,12 +137,15 @@ export function Pedido() {
       {podeEscolher && (
         <section className="cartao mt-5 p-5">
           <h2 className="text-center font-bold">Como você quer pagar?</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <button type="button" className={metodo === "pix" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("pix")}>
               Pix
             </button>
-            <button type="button" className={metodo === "cartao" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("cartao")}>
+            <button type="button" className={metodo === "credito" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("credito")}>
               Cartão de crédito
+            </button>
+            <button type="button" className={metodo === "debito" ? "btn-primario" : "btn-secundario"} onClick={() => setMetodo("debito")}>
+              Cartão de débito
             </button>
           </div>
           {metodo === "pix" && (
@@ -156,8 +159,10 @@ export function Pedido() {
         </section>
       )}
 
-      {podeEscolher && metodo === "cartao" && (
+      {podeEscolher && (metodo === "credito" || metodo === "debito") && (
         <PagamentoCartao
+          key={metodo}
+          tipo={metodo}
           tokenPedido={token}
           valorCentavos={pedido.valor_total_centavos}
           aoConcluir={carregar}

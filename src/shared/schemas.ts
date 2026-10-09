@@ -101,7 +101,11 @@ export const pagamentoCartaoSchema = z
     // que 200 caracteres; não bloquear a compra antes de enviar ao provedor.
     device_id: z.string().max(2048).optional(),
   })
-  .strict();
+  .strict()
+  .refine((entrada) => entrada.payment_type_id !== "debit_card" || entrada.installments === 1, {
+    message: "Cartão de débito deve ser pago à vista.",
+    path: ["installments"],
+  });
 
 export type PagamentoCartaoInput = z.infer<typeof pagamentoCartaoSchema>;
 

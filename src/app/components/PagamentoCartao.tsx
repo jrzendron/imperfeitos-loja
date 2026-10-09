@@ -36,10 +36,12 @@ function carregarScript(src: string): Promise<void> {
 }
 
 export function PagamentoCartao({
+  tipo,
   tokenPedido,
   valorCentavos,
   aoConcluir,
 }: {
+  tipo: "credito" | "debito";
   tokenPedido: string;
   valorCentavos: number;
   aoConcluir: () => Promise<void>;
@@ -65,7 +67,7 @@ export function PagamentoCartao({
           initialization: { amount: valorCentavos / 100 },
           customization: {
             visual: { style: { theme: "default" } },
-            paymentMethods: { types: { excluded: ["debit_card", "prepaid_card"] } },
+            paymentMethods: { types: { excluded: tipo === "debito" ? ["credit_card", "prepaid_card"] : ["debit_card", "prepaid_card"] } },
           },
           callbacks: {
             onReady: () => ativo && setPronto(true),
@@ -73,12 +75,17 @@ export function PagamentoCartao({
               setErro(null);
               setProcessando(true);
               try {
+                const tipoEnviado = additionalData?.paymentTypeId ?? formData.payment_type_id;
+                const tipoEsperado = tipo === "debito" ? "debit_card" : "credit_card";
+                if (tipoEnviado !== tipoEsperado) {
+                  throw new Error(`Escolha um cartão de ${tipo === "debito" ? "débito" : "crédito"} para continuar.`);
+                }
                 const resultado = await api.pagarCartao(tokenPedido, {
                   attempt_id: crypto.randomUUID(),
                   token: formData.token,
                   payment_method_id: formData.payment_method_id,
-                  payment_type_id: additionalData.paymentTypeId,
-                  installments: Number(formData.installments),
+                  payment_type_id: tipoEnviado,
+                  installments: tipo === "debito" ? 1 : Number(formData.installments),
                   payer: {
                     email: formData.payer.email,
                     identification: formData.payer.identification,
@@ -115,11 +122,11 @@ export function PagamentoCartao({
       controller.current?.unmount();
       controller.current = null;
     };
-  }, [tokenPedido, valorCentavos, aoConcluir]);
+  }, [tipo, tokenPedido, valorCentavos, aoConcluir]);
 
   return (
     <section className="cartao mt-5 p-5">
-      <h2 className="text-center font-bold">Pagar com cartão de crédito</h2>
+      <h2 className="text-center font-bold">Pagar com cartão de {tipo === "debito" ? "débito" : "crédito"}</h2>
       <p className="mt-1 text-center text-sm text-suave">
         Preencha os dados no formulário seguro do Mercado Pago.
       </p>
