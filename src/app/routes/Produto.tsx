@@ -76,14 +76,14 @@ export function Produto() {
 
   return (
     <Pagina>
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-start">
-        <section aria-label="Galeria de fotos" className="lg:sticky lg:top-24">
+      <div className="grid min-w-0 grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-start">
+        <section aria-label="Galeria de fotos" className="min-w-0 lg:sticky lg:top-24">
           <div className="cartao overflow-hidden bg-white shadow-[0_18px_55px_rgba(8,87,75,0.10)]">
-            <div className="aspect-[4/3] w-full bg-marca-50/50">
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-marca-50/50">
               {produto.imagens[fotoAtiva] ? (
                 <button
                   type="button"
-                  className="group relative h-full w-full cursor-zoom-in"
+                  className="group absolute inset-0 block h-full w-full cursor-zoom-in"
                   onClick={() => {
                     setNivelZoom(1);
                     setZoomAberto(true);
@@ -93,7 +93,7 @@ export function Produto() {
                   <img
                     src={produto.imagens[fotoAtiva].url}
                     alt={produto.imagens[fotoAtiva].alt ?? `${produto.nome} — foto ${fotoAtiva + 1}`}
-                    className="h-full w-full object-contain"
+                    className="block h-full w-full object-contain"
                   />
                   <span className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-tinta/80 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur transition group-hover:bg-marca-700">
                     <span aria-hidden="true" className="text-base leading-none">⌕</span>
@@ -101,13 +101,13 @@ export function Produto() {
                   </span>
                 </button>
               ) : (
-                <FotoProduto imagens={[]} nome={produto.nome} />
+                <div className="absolute inset-0"><FotoProduto imagens={[]} nome={produto.nome} /></div>
               )}
             </div>
           </div>
 
           {produto.imagens.length > 0 && (
-            <div className="mt-3 flex gap-3 overflow-x-auto pb-2" aria-label="Escolha uma foto">
+            <div className="mt-3 flex min-w-0 max-w-full gap-3 overflow-x-auto pb-2" aria-label="Escolha uma foto">
               {produto.imagens.map((img, n) => (
                 <button
                   key={img.url}
@@ -140,7 +140,7 @@ export function Produto() {
           </p>
         </section>
 
-        <section>
+        <section className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.17em] text-marca-600">3º Flow Blumenau · Expansão</p>
           <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight">{produto.nome}</h1>
           {produto.descricao && <p className="mt-3 whitespace-pre-line text-suave">{produto.descricao}</p>}
